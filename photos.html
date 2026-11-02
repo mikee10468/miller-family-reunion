@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Photos · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    body { background: linear-gradient(180deg, #faf5ef, #f1e8f7); min-height: 100vh; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      background: linear-gradient(160deg, var(--purple-900), var(--purple-600)); color:#fff;
+      padding: calc(env(safe-area-inset-top,0px) + .9rem) 1rem .9rem; position: sticky; top: env(safe-area-inset-top,0px); z-index: 20; }
+    .topbar .script { font-family:"Great Vibes",cursive; color:var(--gold); font-size:1.7rem; line-height:1; }
+    .topbar .sub { font-family:"Cinzel",serif; font-size:.7rem; letter-spacing:.1em; color:#e9dcff; }
+    .topbar a.home { color:var(--gold-soft); text-decoration:none; font-family:"Cinzel",serif; font-size:.85rem; }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 1.2rem 1rem calc(3rem + env(safe-area-inset-bottom,0px)); }
+
+    .upload { background:#fff; border-radius:16px; box-shadow:var(--shadow); border:1px solid rgba(109,40,168,.12); padding:1.3rem; margin-bottom:1.6rem; }
+    .upload h2 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .3rem; font-size:1.2rem; }
+    .quota { font-size:.9rem; color:#6b5b7a; margin:0 0 1rem; }
+    .quota b { color:var(--purple-800); }
+    .upload-row { display:flex; gap:.7rem; flex-wrap:wrap; align-items:center; }
+    .filebtn { position:relative; overflow:hidden; display:inline-block; }
+    .filebtn input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; }
+    input[type=text].cap { flex:1; min-width:180px; padding:.6rem .8rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; }
+    .videorow { margin-top:1rem; padding-top:1rem; border-top:1px solid #eee; display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+    .locked { background:#f0eaf6; color:#7a6a8a; border:1px dashed #b98bdd; border-radius:999px; padding:.55rem 1.1rem; font-family:"Cinzel",serif; font-size:.85rem; }
+    .msg { min-height:1.2em; font-family:"Cinzel",serif; margin-top:.7rem; }
+    .msg.ok { color:#1b6b1b; } .msg.err { color:#b11; } .msg.busy { color:var(--purple-600); }
+    .preview { max-height:70px; border-radius:8px; margin-left:.4rem; vertical-align:middle; }
+
+    .gallery { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:1rem; }
+    .pcard { background:#fff; border-radius:14px; overflow:hidden; box-shadow:var(--shadow); border:1px solid rgba(109,40,168,.12); display:flex; flex-direction:column; }
+    .pcard .imgwrap { aspect-ratio:1/1; background:#eee; overflow:hidden; cursor:pointer; }
+    .pcard img { width:100%; height:100%; object-fit:cover; display:block; }
+    .pcard .body { padding:.7rem .8rem; flex:1; display:flex; flex-direction:column; gap:.2rem; }
+    .pcard .cap { font-family:Georgia,serif; color:var(--ink); }
+    .pcard .by { font-size:.75rem; color:#7a6a8a; }
+    .pcard .del { align-self:flex-start; margin-top:.4rem; background:transparent; border:1px solid #e0b4b4; color:#a33; border-radius:999px; font:inherit; font-size:.78rem; padding:.25rem .7rem; cursor:pointer; }
+    .pcard .del.confirm { background:#a33; color:#fff; border-color:#a33; }
+    .empty { text-align:center; color:#6b5b7a; padding:2.5rem 1rem; font-family:"Cinzel",serif; }
+    .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
+    /* lightbox */
+    .lb { position:fixed; inset:0; background:rgba(20,4,36,.85); display:flex; align-items:center; justify-content:center; z-index:60; padding:1rem; }
+    .lb img { max-width:100%; max-height:88vh; border-radius:10px; }
+    .lb .x { position:absolute; top:1rem; right:1.2rem; background:transparent; border:0; color:#fff; font-size:1.6rem; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div><div class="script">Family Photos</div><div class="sub">MEMORIES · MILLER FAMILY</div></div>
+    <div><a class="home" href="tree.html">🌳 Tree</a> &nbsp; <a class="home" href="event.html">🎉 Event</a> &nbsp; <a class="home" href="login.html">My Account</a></div>
+  </div>
+
+  <div class="wrap" id="wrap"><div class="state"><p>Loading photos…</p></div></div>
+  <div id="lb-root"></div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script>
+    const wrap = document.getElementById("wrap");
+    const lbRoot = document.getElementById("lb-root");
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    const fmt = (d) => d ? new Date(d).toLocaleDateString() : "";
+    const MAX_BYTES = 10 * 1024 * 1024; // 10 MB per photo
+
+    let ME = null, SETTINGS = {}, LIMIT = 3, COUNT = 0;
+
+    async function render() {
+      const videosOn = SETTINGS.videos_enabled === "true";
+      const atLimit = COUNT >= LIMIT;
+      const { data: photos } = await MillerDB.listPhotos();
+      const list = photos || [];
+
+      wrap.innerHTML =
+        '<div class="upload">' +
+          "<h2>Share a photo</h2>" +
+          '<p class="quota">You\'ve used <b>' + COUNT + " of " + LIMIT + "</b> free photos." +
+            (atLimit ? " You\'ve reached your free limit — delete one to add another." : "") + "</p>" +
+          '<div class="upload-row">' +
+            '<span class="filebtn btn btn--gold' + (atLimit ? "" : "") + '">' + (atLimit ? "Limit reached" : "Choose a photo") +
+              (atLimit ? "" : '<input type="file" id="file" accept="image/*" />') + "</span>" +
+            '<input type="text" class="cap" id="cap" placeholder="Add a caption (optional)" maxlength="140" />' +
+            '<span id="fname" class="by"></span>' +
+          "</div>" +
+          '<p class="msg" id="msg"></p>' +
+          '<div class="videorow">' +
+            (videosOn
+              ? '<span class="filebtn btn btn--outline">Upload a video<input type="file" id="vfile" accept="video/*" /></span>'
+              : '<span class="locked">🎬 Video uploads — Premium (coming soon; a small fee will apply)</span>') +
+          "</div>" +
+        "</div>" +
+        (list.length
+          ? '<div class="gallery" id="gallery"></div>'
+          : '<div class="empty">No photos yet — be the first to share a family memory! 💜</div>');
+
+      if (!atLimit) wireUpload();
+      if (list.length) renderGallery(list);
+    }
+
+    function wireUpload() {
+      const file = document.getElementById("file");
+      const fname = document.getElementById("fname");
+      const msg = document.getElementById("msg");
+      if (!file) return;
+      file.addEventListener("change", async () => {
+        const f = file.files && file.files[0];
+        if (!f) return;
+        if (f.size > MAX_BYTES) { msg.textContent = "That photo is larger than 10 MB — please choose a smaller one."; msg.className = "msg err"; return; }
+        fname.textContent = f.name;
+        msg.textContent = "Uploading…"; msg.className = "msg busy";
+        const caption = document.getElementById("cap").value.trim();
+        const { error } = await MillerDB.uploadPhoto({ file: f, caption });
+        if (error) {
+          msg.textContent = /photo_limit/.test(error.message || "") ? "You've reached your free photo limit." : ("Upload failed: " + error.message);
+          msg.className = "msg err";
+          return;
+        }
+        msg.textContent = "Added! 🎉"; msg.className = "msg ok";
+        COUNT = await MillerDB.myPhotoCount();
+        setTimeout(render, 700);
+      });
+    }
+
+    async function renderGallery(list) {
+      const g = document.getElementById("gallery");
+      // signed URLs in parallel
+      const urls = await Promise.all(list.map((p) => MillerDB.signedUrl(p.storage_path)));
+      g.innerHTML = list.map((p, i) => {
+        const canDel = p.owner_id === ME.id || ME.role === "admin";
+        return '<div class="pcard" data-id="' + p.id + '">' +
+          '<div class="imgwrap" data-full="' + (urls[i] || "") + '"><img loading="lazy" src="' + (urls[i] || "") + '" alt="' + esc(p.caption || "Family photo") + '" /></div>' +
+          '<div class="body">' +
+            (p.caption ? '<div class="cap">' + esc(p.caption) + "</div>" : "") +
+            '<div class="by">by ' + esc(p.owner_name || "a family member") + " · " + fmt(p.created_at) + "</div>" +
+            (canDel ? '<button class="del" data-del="' + p.id + '">Remove</button>' : "") +
+          "</div></div>";
+      }).join("");
+
+      g.querySelectorAll(".imgwrap").forEach((el) => el.addEventListener("click", () => openLightbox(el.dataset.full)));
+      g.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => onDelete(b, list)));
+    }
+
+    function onDelete(btn, list) {
+      if (btn.dataset.armed !== "1") {
+        btn.dataset.armed = "1"; btn.textContent = "Tap again to remove"; btn.classList.add("confirm");
+        setTimeout(() => { if (btn.dataset.armed === "1") { btn.dataset.armed = ""; btn.textContent = "Remove"; btn.classList.remove("confirm"); } }, 2500);
+        return;
+      }
+      const id = btn.dataset.del;
+      const photo = list.find((p) => p.id === id);
+      btn.textContent = "Removing…";
+      MillerDB.deletePhoto(photo).then(async ({ error }) => {
+        if (error) { btn.textContent = "Remove"; alert("Could not remove: " + error.message); return; }
+        COUNT = await MillerDB.myPhotoCount();
+        render();
+      });
+    }
+
+    function openLightbox(url) {
+      if (!url) return;
+      lbRoot.innerHTML = '<div class="lb" id="lb"><button class="x" id="lbx">✕</button><img src="' + url + '" /></div>';
+      document.getElementById("lbx").onclick = () => (lbRoot.innerHTML = "");
+      document.getElementById("lb").onclick = (e) => { if (e.target.id === "lb") lbRoot.innerHTML = ""; };
+    }
+
+    (async function init() {
+      if (!MillerDB.configured) { wrap.innerHTML = '<div class="state"><h2>Not connected yet</h2><p><a href="index.html">Back to the family page</a></p></div>'; return; }
+      await new Promise((r) => setTimeout(r, 250));
+      const session = await MillerDB.getSession();
+      if (!session) { location.href = "login.html"; return; }
+      ME = await MillerDB.getProfile();
+      if (!ME) { wrap.innerHTML = '<div class="state"><p>Finishing sign-in… <a href="photos.html">refresh</a>.</p></div>'; return; }
+      if (ME.status !== "active") {
+        wrap.innerHTML = '<div class="state"><h2>Almost there!</h2><p>Your access is pending approval. Once an elder approves you, the family photos will appear here.</p><p><a class="btn btn--gold" href="login.html">My Account</a></p></div>';
+        return;
+      }
+      SETTINGS = await MillerDB.getSettings();
+      LIMIT = parseInt(SETTINGS.photo_limit, 10) || 3;
+      COUNT = await MillerDB.myPhotoCount();
+      render();
+    })();
+  </script>
+</body>
+</html>

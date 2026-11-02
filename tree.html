@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Family Tree · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    :root { --line: #b98bdd; }
+    body { background: linear-gradient(180deg, #faf5ef, #f1e8f7); min-height: 100vh; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      background: linear-gradient(160deg, var(--purple-900), var(--purple-600)); color:#fff;
+      padding: calc(env(safe-area-inset-top,0px) + .9rem) 1rem .9rem; position: sticky; top: env(safe-area-inset-top,0px); z-index: 20; }
+    .topbar .script { font-family:"Great Vibes",cursive; color:var(--gold); font-size:1.7rem; line-height:1; }
+    .topbar .sub { font-family:"Cinzel",serif; font-size:.7rem; letter-spacing:.1em; color:#e9dcff; }
+    .topbar a.home { color:var(--gold-soft); text-decoration:none; font-family:"Cinzel",serif; font-size:.85rem; }
+    .toolbar { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; padding:.8rem 1rem; }
+    .hint { color:#6b5b7a; font-size:.85rem; }
+
+    /* ---- Tree ---- */
+    .tree-scroll { overflow:auto; padding: 1rem 1rem 3rem; -webkit-overflow-scrolling: touch; }
+    .tree { display:inline-block; min-width:100%; }
+    .tree ul { position:relative; padding:1.4em 0 0; white-space:nowrap; margin:0 auto; text-align:center; list-style:none; }
+    .tree li { display:inline-block; vertical-align:top; text-align:center; list-style:none; position:relative; padding:1.4em .4em 0 .4em; }
+    .tree li::before, .tree li::after { content:''; position:absolute; top:0; right:50%; border-top:2px solid var(--line); width:50%; height:1.4em; }
+    .tree li::after { right:auto; left:50%; border-left:2px solid var(--line); }
+    .tree li:only-child::after, .tree li:only-child::before { display:none; }
+    .tree li:only-child { padding-top:0; }
+    .tree li:first-child::before, .tree li:last-child::after { border:0 none; }
+    .tree li:last-child::before { border-right:2px solid var(--line); border-radius:0 6px 0 0; }
+    .tree li:first-child::after { border-radius:6px 0 0 0; }
+    .tree ul ul::before { content:''; position:absolute; top:0; left:50%; border-left:2px solid var(--line); width:0; height:1.4em; }
+    .tree > ul > li::before, .tree > ul > li::after { display:none; }
+    .tree li.collapsed > ul { display:none; }
+
+    .couple { display:inline-flex; align-items:stretch; gap:0; background:#fff; border-radius:14px;
+      box-shadow:0 6px 16px rgba(42,7,66,.12); border:1px solid rgba(109,40,168,.12); overflow:hidden; }
+    .chip { border:0; background:#fff; cursor:pointer; font:inherit; padding:.55rem .8rem; text-align:center;
+      display:flex; flex-direction:column; gap:.1rem; min-width:84px; transition:background .15s; }
+    .chip:hover { background:#f6eefc; }
+    .chip + .chip { border-left:1px dashed rgba(109,40,168,.25); }
+    .chip__name { font-family:"Cinzel",serif; color:var(--purple-800); font-size:.92rem; font-weight:600; white-space:nowrap; }
+    .chip__years { font-size:.72rem; color:#7a6a8a; }
+    .chip__maiden { font-size:.68rem; color:#9a7; font-style:italic; }
+    .chip__photo { width:48px; height:48px; border-radius:50%; object-fit:cover; display:block; margin:0 auto 3px; border:2px solid var(--gold); background:#eee; }
+    .chip--male .chip__name { color:#274b8a; }
+    .chip--female .chip__name { color:#8a2b6b; }
+    .chip.dec .chip__name::after { content:" ✝"; color:#b98bdd; font-size:.7em; }
+    .caret { display:inline-block; margin-top:.3rem; border:0; background:var(--purple-600); color:#fff; cursor:pointer;
+      width:22px; height:22px; border-radius:50%; font-size:.8rem; line-height:1; }
+    .node-wrap { display:inline-flex; flex-direction:column; align-items:center; }
+
+    /* ---- Modal ---- */
+    .modal { position:fixed; inset:0; background:rgba(20,4,36,.6); display:flex; align-items:center; justify-content:center; z-index:60; padding:1rem; }
+    .sheet { background:#fff; border-radius:18px; width:100%; max-width:440px; max-height:88vh; overflow:auto; box-shadow:var(--shadow); }
+    .sheet__head { background:linear-gradient(160deg,var(--purple-900),var(--purple-600)); color:#fff; padding:1.1rem 1.3rem; position:sticky; top:0; }
+    .sheet__head h2 { font-family:"Cinzel",serif; margin:.1rem 0; font-size:1.2rem; }
+    .sheet__head .x { position:absolute; top:.8rem; right:1rem; background:transparent; border:0; color:#fff; font-size:1.3rem; cursor:pointer; }
+    .sheet__body { padding:1.2rem 1.3rem 1.5rem; }
+    .kv { margin:.3rem 0; } .kv b { font-family:"Cinzel",serif; color:var(--purple-800); }
+    .sheet .btn { margin:.3rem .3rem 0 0; }
+    .field { display:block; margin:.8rem 0; }
+    .field span { font-family:"Cinzel",serif; font-size:.8rem; display:block; margin-bottom:.3rem; color:var(--purple-800); }
+    .field input, .field select, .field textarea { width:100%; padding:.65rem .8rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; }
+    .field.row2 { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; }
+    .msg { min-height:1.2em; font-family:"Cinzel",serif; margin-top:.6rem; }
+    .msg.ok { color:#1b6b1b; } .msg.err { color:#b11; }
+    .center { text-align:center; }
+    .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <div class="script">Miller Family Tree</div>
+      <div class="sub">DIFFERENT GENERATIONS · ONE FAMILY</div>
+    </div>
+    <div><a class="home" href="photos.html">📸 Photos</a> &nbsp; <a class="home" href="event.html">🎉 Event</a> &nbsp; <a class="home" href="login.html">My Account</a></div>
+  </div>
+
+  <div id="app">
+    <div class="state"><p>Loading the family tree…</p></div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script>
+    const app = document.getElementById("app");
+    const modalRoot = document.getElementById("modal-root");
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+    let ME = null;
+    let PERSONS = [], BYID = {}, PARTNER = {}, CHILDREN = {}, PHOTO = {};
+
+    async function loadPhotos() {
+      PHOTO = {};
+      const withPhoto = PERSONS.filter((p) => p.photo_url);
+      await Promise.all(withPhoto.map(async (p) => { PHOTO[p.id] = await MillerDB.signedUrl(p.photo_url); }));
+    }
+
+    function yearsLine(p) {
+      if (p.birth_year && p.death_year) return p.birth_year + "–" + p.death_year;
+      if (p.birth_year) return "b. " + p.birth_year;
+      if (p.death_year) return "d. " + p.death_year;
+      return "";
+    }
+
+    function buildMaps() {
+      BYID = {}; PARTNER = {}; CHILDREN = {};
+      PERSONS.forEach(p => { BYID[p.id] = p; });
+      PERSONS.forEach(p => {
+        if (p.father_id) (CHILDREN[p.father_id] = CHILDREN[p.father_id] || []).push(p);
+        if (p.mother_id) (CHILDREN[p.mother_id] = CHILDREN[p.mother_id] || []).push(p);
+      });
+    }
+    function applyPartners(partners) {
+      partners.forEach(pr => { PARTNER[pr.person_a] = pr.person_b; PARTNER[pr.person_b] = pr.person_a; });
+    }
+    // two people who share a child are treated as a couple even without an explicit partner row
+    function coParent(id) {
+      const kids = CHILDREN[id] || [];
+      for (const k of kids) {
+        const other = k.father_id === id ? k.mother_id : (k.mother_id === id ? k.father_id : null);
+        if (other && BYID[other]) return other;
+      }
+      return null;
+    }
+    function effectivePartner(id) {
+      if (PARTNER[id] && BYID[PARTNER[id]]) return PARTNER[id];
+      return coParent(id);
+    }
+    function unionChildren(aId, bId) {
+      const seen = {}, out = [];
+      [aId, bId].filter(Boolean).forEach(pid => (CHILDREN[pid] || []).forEach(c => { if (!seen[c.id]) { seen[c.id] = 1; out.push(c); } }));
+      out.sort((x, y) => (x.birth_year || 9999) - (y.birth_year || 9999));
+      return out;
+    }
+
+    const rendered = {};
+    function chip(p) {
+      const cls = "chip " + (p.gender === "male" ? "chip--male" : p.gender === "female" ? "chip--female" : "") + (p.is_living === false ? " dec" : "");
+      const maiden = p.maiden_name ? '<span class="chip__maiden">née ' + esc(p.maiden_name) + "</span>" : "";
+      const yrs = yearsLine(p);
+      const photo = PHOTO[p.id] ? '<img class="chip__photo" src="' + PHOTO[p.id] + '" alt="" />' : "";
+      return '<button class="' + cls + '" data-id="' + p.id + '">' + photo +
+        '<span class="chip__name">' + esc(p.full_name) + "</span>" +
+        (yrs ? '<span class="chip__years">' + yrs + "</span>" : "") + maiden +
+        "</button>";
+    }
+    function renderNode(id) {
+      if (rendered[id]) return "";
+      rendered[id] = 1;
+      const p = BYID[id];
+      if (!p) return "";
+      const partnerId = effectivePartner(id);
+      if (partnerId) rendered[partnerId] = 1;
+      let couple = '<div class="couple">' + chip(p) + (partnerId ? chip(BYID[partnerId]) : "") + "</div>";
+      const kids = unionChildren(id, partnerId);
+      const kidsHtml = kids.map(k => renderNode(k.id)).join("");
+      const caret = kids.length ? '<button class="caret" data-caret title="Collapse / expand">▾</button>' : "";
+      return "<li><div class='node-wrap'>" + couple + caret + "</div>" +
+        (kids.length ? "<ul>" + kidsHtml + "</ul>" : "") + "</li>";
+    }
+
+    function renderTree() {
+      for (const k in rendered) delete rendered[k];
+      const roots = PERSONS.filter(p => !p.father_id && !p.mother_id)
+        .filter(p => {
+          const pid = effectivePartner(p.id);
+          if (!pid || !BYID[pid]) return true;
+          const sp = BYID[pid];
+          return !sp.father_id && !sp.mother_id; // exclude married-in spouses
+        });
+      let html = "<ul>" + roots.map(r => renderNode(r.id)).filter(Boolean).join("") + "</ul>";
+      // any persons not yet rendered (orphans / disconnected) get their own root
+      const leftovers = PERSONS.filter(p => !rendered[p.id]);
+      if (leftovers.length) html += "<ul>" + leftovers.map(p => renderNode(p.id)).join("") + "</ul>";
+
+      const reviewer = ME.role === "admin" || ME.role === "elder";
+      app.innerHTML =
+        '<div class="toolbar">' +
+          '<span class="hint">Tap a name for details' + (ME.status === "active" ? ", or to add relatives" : "") + '. Tap ▾ to collapse a branch.</span>' +
+          (reviewer ? '<a class="btn btn--sm btn--gold" href="admin.html#tree">Review submissions</a>' : "") +
+        "</div>" +
+        '<div class="tree-scroll"><div class="tree">' + html + "</div></div>";
+    }
+
+    /* ---------- interactions ---------- */
+    app.addEventListener("click", (e) => {
+      const caret = e.target.closest("[data-caret]");
+      if (caret) { caret.closest("li").classList.toggle("collapsed"); caret.textContent = caret.closest("li").classList.contains("collapsed") ? "▸" : "▾"; return; }
+      const chipBtn = e.target.closest(".chip");
+      if (chipBtn) openDetail(chipBtn.dataset.id);
+    });
+
+    function closeModal() { modalRoot.innerHTML = ""; }
+    function openModal(headTitle, bodyHtml) {
+      modalRoot.innerHTML =
+        '<div class="modal" id="ov"><div class="sheet">' +
+          '<div class="sheet__head"><button class="x" id="mx">✕</button><h2>' + headTitle + "</h2></div>" +
+          '<div class="sheet__body">' + bodyHtml + "</div>" +
+        "</div></div>";
+      document.getElementById("mx").onclick = closeModal;
+      document.getElementById("ov").onclick = (ev) => { if (ev.target.id === "ov") closeModal(); };
+    }
+
+    function parentLine(p) {
+      const f = p.father_id && BYID[p.father_id] ? BYID[p.father_id].full_name : null;
+      const m = p.mother_id && BYID[p.mother_id] ? BYID[p.mother_id].full_name : null;
+      if (!f && !m) return "";
+      return '<div class="kv"><b>Parents:</b> ' + esc([f, m].filter(Boolean).join(" & ")) + "</div>";
+    }
+
+    function openDetail(id) {
+      const p = BYID[id];
+      if (!p) return;
+      const partnerId = effectivePartner(id);
+      const canEdit = ME.status === "active";
+      let body =
+        (PHOTO[id] ? '<img src="' + PHOTO[id] + '" alt="" style="width:120px;height:120px;object-fit:cover;border-radius:12px;border:2px solid var(--gold);display:block;margin:0 0 .9rem;" />' : "") +
+        (yearsLine(p) ? '<div class="kv"><b>Years:</b> ' + yearsLine(p) + "</div>" : "") +
+        '<div class="kv"><b>Status:</b> ' + (p.is_living === false ? "In loving memory ✝" : "Living") + "</div>" +
+        (p.maiden_name ? '<div class="kv"><b>Maiden name:</b> ' + esc(p.maiden_name) + "</div>" : "") +
+        parentLine(p) +
+        (partnerId ? '<div class="kv"><b>Spouse:</b> ' + esc(BYID[partnerId].full_name) + "</div>" : "") +
+        (p.notes ? '<div class="kv"><b>Notes:</b> ' + esc(p.notes) + "</div>" : "");
+      if (canEdit) {
+        body += '<hr style="border:0;border-top:1px solid #eee;margin:1rem 0" />' +
+          '<button class="btn btn--sm btn--gold" data-act="edit">Suggest an edit</button>' +
+          '<button class="btn btn--sm btn--outline" data-act="child">Add a child</button>' +
+          '<button class="btn btn--sm btn--outline" data-act="parent">Add a parent</button>' +
+          (partnerId ? "" : '<button class="btn btn--sm btn--outline" data-act="spouse">Add a spouse</button>') +
+          '<p class="hint" style="margin-top:.6rem">Changes are reviewed by a family elder before they appear.</p>';
+      }
+      openModal(esc(p.full_name), body);
+      if (canEdit) {
+        modalRoot.querySelector('[data-act="edit"]').onclick = () => openEdit(p);
+        modalRoot.querySelector('[data-act="child"]').onclick = () => openAddChild(p, partnerId);
+        modalRoot.querySelector('[data-act="parent"]').onclick = () => openAddParent(p);
+        const sp = modalRoot.querySelector('[data-act="spouse"]'); if (sp) sp.onclick = () => openAddSpouse(p);
+      }
+    }
+
+    function personFields(prefill) {
+      prefill = prefill || {};
+      const g = prefill.gender || "";
+      return '<label class="field"><span>Full name</span><input name="full_name" value="' + esc(prefill.full_name || "") + '" required /></label>' +
+        '<div class="field row2" style="margin:0"><label class="field"><span>Birth year</span><input name="birth_year" inputmode="numeric" value="' + esc(prefill.birth_year || "") + '" placeholder="e.g. 1965" /></label>' +
+        '<label class="field"><span>Death year</span><input name="death_year" inputmode="numeric" value="' + esc(prefill.death_year || "") + '" placeholder="(if applicable)" /></label></div>' +
+        '<label class="field"><span>Maiden name (optional)</span><input name="maiden_name" value="' + esc(prefill.maiden_name || "") + '" /></label>' +
+        '<label class="field"><span>Gender</span><select name="gender">' +
+          ['','male','female','other'].map(o => '<option value="' + o + '"' + (g === o ? " selected" : "") + ">" + (o || "—") + "</option>").join("") +
+        "</select></label>" +
+        '<label class="field"><span>Living?</span><select name="is_living">' +
+          '<option value="true"' + (prefill.is_living !== false ? " selected" : "") + ">Living</option>" +
+          '<option value="false"' + (prefill.is_living === false ? " selected" : "") + ">In loving memory</option></select></label>" +
+        '<label class="field"><span>Notes (optional)</span><textarea name="notes" rows="2">' + esc(prefill.notes || "") + "</textarea></label>";
+    }
+    function readForm(form) {
+      const d = Object.fromEntries(new FormData(form).entries());
+      const out = {};
+      ["full_name","maiden_name","gender","notes"].forEach(k => { if (d[k] !== undefined && d[k] !== "") out[k] = d[k].trim(); });
+      ["birth_year","death_year"].forEach(k => { if (d[k]) out[k] = String(d[k]).replace(/\D/g,""); });
+      out.is_living = d.is_living === "false" ? false : true;
+      return out;
+    }
+
+    function submitForm(kind, targetId, extra, form, msgEl) {
+      const data = Object.assign(readForm(form), extra || {});
+      if (!data.full_name) { msgEl.textContent = "Please enter a name."; msgEl.className = "msg err"; return; }
+      msgEl.textContent = "Submitting…"; msgEl.className = "msg";
+      MillerDB.submitPerson({ kind, targetId, data }).then(({ error }) => {
+        if (error) { msgEl.textContent = "Could not submit: " + error.message; msgEl.className = "msg err"; return; }
+        msgEl.textContent = "Submitted! A family elder will review it.";
+        msgEl.className = "msg ok";
+        setTimeout(closeModal, 1600);
+      });
+    }
+
+    function openEdit(p) {
+      openModal("Suggest an edit", '<form id="f">' + personFields(p) +
+        '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p></form>');
+      const f = document.getElementById("f");
+      f.onsubmit = (e) => { e.preventDefault(); submitForm("edit", p.id, {}, f, document.getElementById("m")); };
+    }
+    function openAddChild(p, partnerId) {
+      // assign parents by gender
+      const partner = partnerId ? BYID[partnerId] : null;
+      let father_id = "", mother_id = "";
+      const assign = (per) => { if (!per) return; if (per.gender === "female") mother_id = per.id; else father_id = per.id; };
+      assign(p); assign(partner);
+      const who = partner ? (esc(p.full_name) + " & " + esc(partner.full_name)) : esc(p.full_name);
+      openModal("Add a child of " + who, '<form id="f">' + personFields({}) +
+        '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p></form>');
+      const f = document.getElementById("f");
+      f.onsubmit = (e) => { e.preventDefault(); submitForm("add", null, { father_id, mother_id }, f, document.getElementById("m")); };
+    }
+    function openAddParent(p) {
+      openModal("Add a parent of " + esc(p.full_name),
+        '<form id="f">' +
+          '<label class="field"><span>This parent is the…</span><select name="role"><option value="father">Father</option><option value="mother">Mother</option></select></label>' +
+          personFields({}) +
+          '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p>' +
+        "</form>");
+      const f = document.getElementById("f");
+      f.onsubmit = (e) => {
+        e.preventDefault();
+        const role = f.role.value === "mother" ? "mother" : "father";
+        submitForm("add", null, { child_id: p.id, child_role: role }, f, document.getElementById("m"));
+      };
+    }
+    function openAddSpouse(p) {
+      openModal("Add " + esc(p.full_name) + "'s spouse", '<form id="f">' + personFields({}) +
+        '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p></form>');
+      const f = document.getElementById("f");
+      f.onsubmit = (e) => { e.preventDefault(); submitForm("add", null, { partner_id: p.id }, f, document.getElementById("m")); };
+    }
+
+    /* ---------- init ---------- */
+    (async function init() {
+      if (!MillerDB.configured) { app.innerHTML = '<div class="state"><h2>Not connected yet</h2><p><a href="index.html">Back to the family page</a></p></div>'; return; }
+      await new Promise(r => setTimeout(r, 250));
+      const session = await MillerDB.getSession();
+      if (!session) { location.href = "login.html"; return; }
+      ME = await MillerDB.getProfile();
+      if (!ME) { app.innerHTML = '<div class="state"><p>Finishing sign-in… <a href="tree.html">refresh</a>.</p></div>'; return; }
+      if (ME.status !== "active") {
+        app.innerHTML = '<div class="state"><h2>Almost there!</h2><p>Your access is pending approval. Once a family elder approves you, the tree will appear here.</p><p><a class="btn btn--gold" href="login.html">My Account</a></p></div>';
+        return;
+      }
+      const [{ data: persons, error: e1 }, { data: partners, error: e2 }] = await Promise.all([MillerDB.listPersons(), MillerDB.listPartners()]);
+      if (e1 || e2) { app.innerHTML = '<div class="state"><p>Could not load the tree. Please refresh.</p></div>'; return; }
+      PERSONS = persons || []; buildMaps(); applyPartners(partners || []);
+      if (!PERSONS.length) { app.innerHTML = '<div class="state"><p>The tree is empty.</p></div>'; return; }
+      await loadPhotos();
+      renderTree();
+    })();
+  </script>
+</body>
+</html>

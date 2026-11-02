@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Lawrence & Lula Miller — Family & Friends Day</title>
+  <meta name="description" content="The official hub for the Lawrence & Lula Miller Family & Friends Day — July 3, 2027 at Mellon Park, Pittsburgh. Build the family tree, share photos, and tell us what you'll bring." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Miller Family" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- Social share preview (Open Graph / Twitter) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Lawrence & Lula Miller — Family & Friends Day" />
+  <meta property="og:description" content="July 3, 2027 · Mellon Park, Pittsburgh. Join the family hub: tree, photos, and RSVP." />
+  <meta property="og:image" content="family-reunion-flyer_2027.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Fonts (graceful fallback to system serif if offline) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <!-- Install banner (hidden until installable) -->
+  <div id="install-banner" class="install-banner" hidden>
+    <span>📲 Add the Family app to your phone</span>
+    <div class="install-banner__actions">
+      <button id="install-btn" class="btn btn--sm btn--gold">Install</button>
+      <button id="install-dismiss" class="btn btn--sm btn--ghost" aria-label="Dismiss">✕</button>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero__inner">
+      <p class="hero__eyebrow">Honoring Our Past · Celebrating Our Present · Building Our Future</p>
+      <h1 class="hero__title">
+        <span class="script">Lawrence &amp; Lula Miller</span>
+        <span class="display">Family &amp; Friends Day</span>
+      </h1>
+      <p class="hero__welcome">All Family &amp; Friends Are Welcome</p>
+
+      <div class="hero__cta">
+        <a href="#request-access" class="btn btn--gold btn--lg">Request Access</a>
+        <a href="#event" class="btn btn--outline btn--lg">Event Details</a>
+      </div>
+
+      <!-- Countdown -->
+      <div class="countdown" id="countdown" aria-label="Countdown to the reunion">
+        <div class="countdown__cell"><span id="cd-days">—</span><label>Days</label></div>
+        <div class="countdown__cell"><span id="cd-hours">—</span><label>Hours</label></div>
+        <div class="countdown__cell"><span id="cd-mins">—</span><label>Min</label></div>
+        <div class="countdown__cell"><span id="cd-secs">—</span><label>Sec</label></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- FLYER -->
+    <section class="section flyer-section" id="flyer">
+      <h2 class="section__title">The Official Flyer</h2>
+      <a href="family-reunion-flyer_2027.jpg" target="_blank" rel="noopener" class="flyer-link" title="Tap to view full size">
+        <img src="family-reunion-flyer_2027.jpg" alt="Lawrence & Lula Miller Family & Friends Day flyer — July 3, 2027 at Mellon Park, Pittsburgh" class="flyer-img" loading="lazy" />
+      </a>
+      <p class="muted center">Tap the flyer to view it full size.</p>
+    </section>
+
+    <!-- EVENT DETAILS -->
+    <section class="section" id="event">
+      <h2 class="section__title">Event Details</h2>
+      <div class="cards">
+        <div class="card">
+          <div class="card__icon">📅</div>
+          <h3>When</h3>
+          <p><strong>Saturday, July 3, 2027</strong><br />12:00 PM – 8:00 PM</p>
+          <button class="btn btn--sm btn--gold" id="add-calendar">Add to Calendar</button>
+        </div>
+        <div class="card">
+          <div class="card__icon">📍</div>
+          <h3>Where</h3>
+          <p><strong>Mellon Park</strong><br />Fifth Ave &amp; Beechwood Blvd<br />Pittsburgh, PA 15206</p>
+          <a class="btn btn--sm btn--outline" id="map-link" href="#" target="_blank" rel="noopener">Open Map</a>
+        </div>
+        <div class="card">
+          <div class="card__icon">🧺</div>
+          <h3>Good to Know</h3>
+          <p>Spray park · shelter &amp; picnic tables · playground · restrooms. Bring chairs &amp; tents if you're local!</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT'S INSIDE -->
+    <section class="section" id="features">
+      <h2 class="section__title">What's Inside the App</h2>
+      <p class="muted center">We're building these now — here's what's coming.</p>
+      <div class="cards">
+        <div class="card feature">
+          <div class="card__icon">🌳</div>
+          <h3>Family Tree</h3>
+          <p>Add your relatives and explore generations. Every edit is reviewed by family elders before it goes live.</p>
+          <span class="badge">Coming soon</span>
+        </div>
+        <div class="card feature">
+          <div class="card__icon">📸</div>
+          <h3>Photos &amp; Memories</h3>
+          <p>Share up to 3 photos free. Videos coming as a premium add-on.</p>
+          <span class="badge">Coming soon</span>
+        </div>
+        <div class="card feature">
+          <div class="card__icon">🍽️</div>
+          <h3>What I'm Bringing</h3>
+          <p>Claim a dish and sign up to help: setup, cleanup, games, flag football, volleyball &amp; karaoke.</p>
+          <span class="badge">Coming soon</span>
+        </div>
+        <div class="card feature">
+          <div class="card__icon">💜</div>
+          <h3>Family Fellowship</h3>
+          <p>One place for every generation — kept alive for future reunions, not just 2027.</p>
+          <span class="badge">Coming soon</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- REQUEST ACCESS -->
+    <section class="section section--accent" id="request-access">
+      <h2 class="section__title">Request Access</h2>
+      <p class="center">Access is granted by request. Tell us who you are and a family admin or elder will approve you.</p>
+      <form id="access-form" class="form" novalidate>
+        <div class="form__row">
+          <label>Full name
+            <input type="text" name="name" required autocomplete="name" placeholder="Your full name" />
+          </label>
+        </div>
+        <div class="form__row form__row--2">
+          <label>Email
+            <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+          </label>
+          <label>Phone (for text approval)
+            <input type="tel" name="phone" autocomplete="tel" placeholder="(optional)" />
+          </label>
+        </div>
+        <div class="form__row">
+          <label>How are you related to the Miller family?
+            <input type="text" name="relationship" placeholder="e.g., Grandchild of Betty / Friend of the family" />
+          </label>
+        </div>
+        <div class="form__row">
+          <label>Anything else?
+            <textarea name="message" rows="3" placeholder="Optional note"></textarea>
+          </label>
+        </div>
+        <button type="submit" class="btn btn--gold btn--lg">Send My Request</button>
+        <p class="form__note" id="form-note" role="status"></p>
+      </form>
+      <p class="center" style="margin-top:1.4rem;">
+        Already approved? <a href="login.html" style="color:var(--gold-soft);font-weight:600;">Sign in →</a>
+      </p>
+    </section>
+
+    <!-- SHARE -->
+    <section class="section" id="share">
+      <h2 class="section__title">Spread the Word</h2>
+      <p class="center">Help every branch of the family find us.</p>
+      <div class="share">
+        <button class="btn btn--outline" id="share-native">Share App</button>
+        <a class="btn btn--outline" id="share-fb" href="#" target="_blank" rel="noopener">Facebook</a>
+        <a class="btn btn--outline" id="share-wa" href="#" target="_blank" rel="noopener">WhatsApp</a>
+        <button class="btn btn--outline" id="share-copy">Copy Link</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p class="footer__tag script">Different Generations ~ Same Family ~ One Love</p>
+    <p class="footer__small">Lawrence &amp; Lula Miller Family &amp; Friends · A lifetime family hub</p>
+  </footer>
+
+  <!-- iOS install help -->
+  <div id="ios-help" class="modal" hidden>
+    <div class="modal__box">
+      <h3>Add to your iPhone</h3>
+      <ol>
+        <li>Tap the <strong>Share</strong> button <span class="ios-share">⬆️</span> in Safari.</li>
+        <li>Scroll and tap <strong>“Add to Home Screen.”</strong></li>
+        <li>Tap <strong>Add</strong> — the Miller Family app appears on your home screen.</li>
+      </ol>
+      <button class="btn btn--gold" id="ios-close">Got it</button>
+    </div>
+  </div>
+
+  <!-- Backend (loads only if configured in config.js) -->
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

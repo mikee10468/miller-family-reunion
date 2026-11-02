@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sign In · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    body { background: linear-gradient(160deg, var(--purple-900), var(--purple-600)); min-height: 100vh; color: #fff; }
+    .auth { max-width: 460px; margin: 0 auto; padding: 2.4rem 1.2rem calc(2.4rem + env(safe-area-inset-bottom,0px)); }
+    .auth__brand { text-align: center; margin-bottom: 1.6rem; }
+    .auth__brand .script { color: var(--gold); font-size: clamp(2rem, 9vw, 3rem); display: block; line-height: 1; }
+    .auth__brand .display { font-family: "Cinzel", serif; letter-spacing: .1em; font-size: .8rem; color: #e9dcff; }
+    .panel { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.16); border-radius: var(--radius); padding: 1.6rem; backdrop-filter: blur(4px); }
+    .panel h1 { font-family: "Cinzel", serif; font-size: 1.3rem; margin: 0 0 .4rem; }
+    .panel p { color: #e9dcff; }
+    .field { display: block; margin: 1rem 0; }
+    .field span { font-family: "Cinzel", serif; font-size: .8rem; letter-spacing: .04em; display: block; margin-bottom: .35rem; }
+    .field input { width: 100%; padding: .8rem .9rem; border-radius: 12px; border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.95); color: var(--ink); font: inherit; font-family: Georgia, serif; }
+    .field input:focus { outline: 2px solid var(--gold); }
+    .btn--block { width: 100%; }
+    .msg { min-height: 1.3em; margin-top: .9rem; font-family: "Cinzel", serif; font-size: .9rem; }
+    .msg.ok { color: var(--gold-soft); } .msg.err { color: #ffb4b4; }
+    .quiet { color: #cdb8e6; font-size: .85rem; text-align: center; margin-top: 1.4rem; }
+    .quiet a { color: var(--gold-soft); }
+    .divider { border: 0; border-top: 1px solid rgba(255,255,255,.15); margin: 1.4rem 0; }
+    .role-chip { display:inline-block; background: rgba(230,180,34,.2); border:1px solid rgba(230,180,34,.5); color: var(--gold-soft); border-radius:999px; padding:.15rem .7rem; font-family:"Cinzel",serif; font-size:.75rem; letter-spacing:.05em; }
+    .applinks { display:grid; gap:.6rem; margin-top:1rem; }
+  </style>
+</head>
+<body>
+  <div class="auth">
+    <div class="auth__brand">
+      <span class="script">Miller Family</span>
+      <span class="display">FAMILY &amp; FRIENDS HUB</span>
+    </div>
+
+    <div class="panel" id="panel">
+      <h1>Loading…</h1>
+    </div>
+
+    <p class="quiet"><a href="index.html">← Back to the family page</a></p>
+  </div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script>
+    const panel = document.getElementById("panel");
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    function render(html) { panel.innerHTML = html; }
+
+    function notConfigured() {
+      render(
+        '<h1>Not connected yet</h1>' +
+        "<p>The family hub backend isn't connected yet. Once it's live, you'll sign in here with your email.</p>" +
+        '<p><a href="index.html" style="color:var(--gold-soft);font-weight:600;">Request access →</a></p>'
+      );
+    }
+
+    function signInForm(msg, msgClass) {
+      render(
+        '<h1>Family Sign In</h1>' +
+        "<p>Enter your email and we'll send you a secure sign-in link — no password needed.</p>" +
+        '<form id="login-form">' +
+          '<label class="field"><span>Email</span><input type="email" name="email" required autocomplete="email" placeholder="you@example.com" /></label>' +
+          '<button class="btn btn--gold btn--block" type="submit">Send My Sign-In Link</button>' +
+          '<p class="msg ' + (msgClass || "") + '" id="msg">' + (msg || "") + "</p>" +
+        "</form>" +
+        '<hr class="divider" />' +
+        '<p class="quiet">New here? <a href="index.html">Request access first →</a></p>'
+      );
+      document.getElementById("login-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = e.target.email.value.trim();
+        const m = document.getElementById("msg");
+        m.textContent = "Sending…"; m.className = "msg";
+        const { error } = await MillerDB.sendMagicLink(email, window.location.origin + window.location.pathname);
+        if (error) { m.textContent = error.message || "Could not send the link. Try again."; m.className = "msg err"; return; }
+        render(
+          '<h1>Check your email 📬</h1>' +
+          "<p>We sent a sign-in link to <strong>" + esc(email) + "</strong>. Open it on this device to finish signing in.</p>" +
+          "<p class='quiet'>Didn't get it? Check spam, or <a href='login.html'>try again</a>.</p>"
+        );
+      });
+    }
+
+    function pendingView(profile) {
+      render(
+        '<h1>Almost there!</h1>' +
+        "<p>You're signed in as <strong>" + esc(profile.email) + "</strong>, but your access is <strong>pending approval</strong> by a family admin or elder.</p>" +
+        "<p>Have an <strong>invite code</strong>? Enter it to unlock access right away:</p>" +
+        '<form id="redeem-form">' +
+          '<label class="field"><span>Invite code</span><input name="code" placeholder="ABCD-EF23" autocomplete="off" /></label>' +
+          '<button class="btn btn--gold btn--block" type="submit">Unlock Access</button>' +
+          '<p class="msg" id="msg"></p>' +
+        "</form>" +
+        '<hr class="divider" />' +
+        '<button class="btn btn--outline btn--block" id="signout">Sign Out</button>'
+      );
+      document.getElementById("signout").addEventListener("click", async () => { await MillerDB.signOut(); location.reload(); });
+      document.getElementById("redeem-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const code = e.target.code.value.trim().toUpperCase();
+        const m = document.getElementById("msg");
+        m.textContent = "Checking…"; m.className = "msg";
+        const { data, error } = await MillerDB.redeemInvite(code);
+        if (error) { m.textContent = "Something went wrong. Try again."; m.className = "msg err"; return; }
+        const map = { ok: null, invalid: "That code isn't valid.", expired: "That code has expired.", wrong_email: "That code was issued for a different email.", not_signed_in: "Please sign in again." };
+        if (data === "ok") { location.reload(); }
+        else { m.textContent = map[data] || "That code could not be used."; m.className = "msg err"; }
+      });
+    }
+
+    function activeView(profile) {
+      const reviewer = profile.role === "admin" || profile.role === "elder";
+      render(
+        '<h1>Welcome, ' + esc((profile.full_name || profile.email).split(" ")[0]) + '! 💜</h1>' +
+        '<p>You\'re signed in. <span class="role-chip">' + esc(profile.role) + "</span></p>" +
+        '<div class="applinks">' +
+          '<a class="btn btn--gold btn--block" href="tree.html">🌳 Explore the Family Tree</a>' +
+          '<a class="btn btn--gold btn--block" href="photos.html">📸 Family Photos</a>' +
+          '<a class="btn btn--gold btn--block" href="event.html">🎉 Reunion: RSVP & Volunteer</a>' +
+          (reviewer ? '<a class="btn btn--outline btn--block" href="admin.html">Admin / Approvals Panel</a>' : "") +
+        "</div>" +
+        '<hr class="divider" />' +
+        '<button class="btn btn--outline btn--block" id="signout">Sign Out</button>'
+      );
+      document.getElementById("signout").addEventListener("click", async () => { await MillerDB.signOut(); location.reload(); });
+    }
+
+    (async function init() {
+      if (!MillerDB.configured) return notConfigured();
+      // Give supabase-js a moment to parse the magic-link hash on redirect.
+      await new Promise((r) => setTimeout(r, 300));
+      const session = await MillerDB.getSession();
+      if (!session) return signInForm();
+      const profile = await MillerDB.getProfile();
+      if (!profile) { // profile row not created yet; brief retry
+        await new Promise((r) => setTimeout(r, 800));
+        const p2 = await MillerDB.getProfile();
+        if (!p2) return signInForm("Signed in, finishing setup… refresh in a moment.", "ok");
+        return p2.status === "active" ? activeView(p2) : pendingView(p2);
+      }
+      return profile.status === "active" ? activeView(profile) : pendingView(profile);
+    })();
+  </script>
+</body>
+</html>

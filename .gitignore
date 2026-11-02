@@ -1,0 +1,13 @@
+# --- Kept private (NOT published to the public site/repo) ---
+# Family photos & history (served from Supabase Storage instead, behind login)
+Levi_Miller/
+# Family tree reference image (contains family members' names)
+family_tree structure.jpg
+# Database schema & setup — contains the seeded admin email; not needed by the site
+supabase/
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+node_modules/
+*.log

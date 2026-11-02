@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Admin · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    .wrap { max-width: 920px; margin: 0 auto; padding: 1.4rem 1rem calc(2rem + env(safe-area-inset-bottom,0px)); }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; background: linear-gradient(160deg, var(--purple-900), var(--purple-600)); color:#fff; padding: calc(env(safe-area-inset-top,0px) + 1rem) 1rem 1rem; }
+    .topbar .brand { font-family:"Cinzel",serif; letter-spacing:.06em; }
+    .topbar .script { font-family:"Great Vibes",cursive; color:var(--gold); font-size:1.8rem; }
+    .tabs { display:flex; gap:.5rem; flex-wrap:wrap; margin:1.2rem 0; }
+    .tab { border:0; cursor:pointer; font:inherit; font-family:"Cinzel",serif; padding:.55rem 1.1rem; border-radius:999px; background:#efe6f7; color:var(--purple-800); }
+    .tab.active { background:var(--purple-700, #5a1e8c); color:#fff; background:linear-gradient(180deg,var(--purple-600),var(--purple-800)); }
+    .count { display:inline-block; min-width:1.4em; text-align:center; background:var(--gold); color:#3a2a00; border-radius:999px; font-size:.75rem; padding:0 .4rem; margin-left:.4rem; }
+    .list { display:grid; gap:.9rem; }
+    .row { background:#fff; border:1px solid rgba(109,40,168,.12); border-radius:14px; padding:1rem 1.1rem; box-shadow:var(--shadow); }
+    .row h3 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .25rem; font-size:1.05rem; }
+    .row .meta { color:#6b5b7a; font-size:.9rem; }
+    .row .actions { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.8rem; align-items:center; }
+    select { font:inherit; padding:.45rem .6rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); background:#fff; color:var(--ink); }
+    .pill { display:inline-block; border-radius:999px; padding:.15rem .6rem; font-size:.72rem; font-family:"Cinzel",serif; letter-spacing:.04em; }
+    .pill.pending{background:#fff2cc;color:#8a6a00;} .pill.active{background:#d6f5d6;color:#1b6b1b;}
+    .pill.approved{background:#d6f5d6;color:#1b6b1b;} .pill.denied,.pill.suspended{background:#f7d6d6;color:#8a1b1b;}
+    .pill.admin{background:#e9d6f7;color:#5a1e8c;} .pill.elder{background:#d6e4f7;color:#1b4d8a;} .pill.member{background:#eee;color:#555;}
+    .empty { text-align:center; color:#6b5b7a; padding:2rem; font-family:"Cinzel",serif; }
+    .notice { background:#fff8e6; border:1px solid var(--gold); border-radius:12px; padding:.9rem 1.1rem; margin-bottom:1rem; }
+    .code { font-family:ui-monospace,Menlo,Consolas,monospace; background:#3B0A58; color:var(--gold-soft); padding:.3rem .6rem; border-radius:8px; letter-spacing:.08em; }
+    .gate { max-width:460px; margin:3rem auto; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div><span class="script">Miller</span> <span class="brand">ADMIN</span></div>
+    <div id="whoami" class="brand" style="font-size:.85rem;"></div>
+  </div>
+
+  <div class="wrap" id="wrap">
+    <p class="empty">Loading…</p>
+  </div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script>
+    const wrap = document.getElementById("wrap");
+    const who = document.getElementById("whoami");
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    const fmt = (d) => d ? new Date(d).toLocaleString() : "";
+    let ME = null, TAB = "requests";
+    let PERSON_BYID = {}, PROFILE_BYID = {};
+
+    function gate(msg) {
+      wrap.innerHTML = '<div class="gate"><h2>' + msg + '</h2>' +
+        '<p><a class="btn btn--gold" href="login.html">Go to Sign In</a></p></div>';
+    }
+
+    function tabsBar(counts) {
+      return '<div class="tabs">' +
+        tabBtn("requests", "Access Requests", counts.requests) +
+        tabBtn("tree", "Tree Review", counts.tree) +
+        tabBtn("members", "Members", counts.members) +
+        tabBtn("invites", "Invites", counts.invites) +
+        (ME && ME.role === "admin" ? tabBtn("settings", "Settings", 0) : "") +
+        '<a class="tab" href="tree.html" style="margin-left:auto;">View Tree</a>' +
+        '<a class="tab" href="login.html">My Account</a>' +
+        "</div>";
+    }
+    function tabBtn(id, label, n) {
+      return '<button class="tab ' + (TAB === id ? "active" : "") + '" data-tab="' + id + '">' +
+        label + (n ? '<span class="count">' + n + "</span>" : "") + "</button>";
+    }
+
+    async function load() {
+      const { data: reqs } = await MillerDB.listAccessRequests();
+      const { data: members } = await MillerDB.listProfiles();
+      const { data: invites } = await MillerDB.client.from("invites").select("*").order("created_at", { ascending: false });
+      const { data: subs } = await MillerDB.listSubmissions();
+      const { data: persons } = await MillerDB.listPersons();
+      const settings = (ME.role === "admin") ? await MillerDB.getSettings() : {};
+      PERSON_BYID = {}; (persons || []).forEach(p => PERSON_BYID[p.id] = p);
+      PROFILE_BYID = {}; (members || []).forEach(m => PROFILE_BYID[m.id] = m);
+
+      const pendingReqs = (reqs || []).filter((r) => r.status === "pending").length;
+      const pendingSubs = (subs || []).filter((s) => s.status === "pending").length;
+      const counts = { requests: pendingReqs, tree: pendingSubs, members: (members || []).length, invites: (invites || []).filter(i=>!i.used).length };
+
+      let body = tabsBar(counts);
+      if (TAB === "requests") body += renderRequests(reqs || []);
+      if (TAB === "tree") body += renderSubmissions(subs || []);
+      if (TAB === "members") body += renderMembers(members || []);
+      if (TAB === "invites") body += renderInvites(invites || []);
+      if (TAB === "settings") body += renderSettings(settings);
+      wrap.innerHTML = body;
+      bind();
+    }
+
+    function pname(id) { return id && PERSON_BYID[id] ? PERSON_BYID[id].full_name : "(unknown)"; }
+    function submitterName(id) {
+      const p = PROFILE_BYID[id];
+      return p ? (p.full_name || p.email) : "a member";
+    }
+    function summarize(s) {
+      const d = s.data || {};
+      const bits = [];
+      if (d.full_name) bits.push("<b>" + esc(d.full_name) + "</b>");
+      const yrs = [d.birth_year, d.death_year].filter(Boolean).join("–");
+      if (yrs) bits.push(esc(yrs));
+      if (d.gender) bits.push(esc(d.gender));
+      if (d.maiden_name) bits.push("née " + esc(d.maiden_name));
+      if (d.is_living === false) bits.push("in memoriam");
+      let rel = [];
+      if (d.father_id) rel.push("father: " + esc(pname(d.father_id)));
+      if (d.mother_id) rel.push("mother: " + esc(pname(d.mother_id)));
+      if (d.partner_id) rel.push("spouse of: " + esc(pname(d.partner_id)));
+      if (d.child_id) rel.push("to be the " + (d.child_role === "mother" ? "mother" : "father") + " of: " + esc(pname(d.child_id)));
+      if (d.notes) rel.push("notes: " + esc(d.notes));
+      return bits.join(" · ") + (rel.length ? "<br><span class='meta'>" + rel.join(" · ") + "</span>" : "");
+    }
+    function renderSubmissions(subs) {
+      const pending = subs.filter(s => s.status === "pending");
+      const done = subs.filter(s => s.status !== "pending").slice(0, 15);
+      if (!subs.length) return '<p class="empty">No tree submissions yet. Members can propose additions from the tree.</p>';
+      const card = (s, actions) =>
+        '<div class="row">' +
+          "<h3>" + (s.kind === "add" ? "Add person" : "Edit " + esc(pname(s.target_id))) +
+            ' <span class="pill ' + s.status + '">' + s.status + "</span></h3>" +
+          '<div class="meta">Proposed by ' + esc(submitterName(s.submitted_by)) + " · " + fmt(s.created_at) + "</div>" +
+          '<div style="margin:.5rem 0">' + summarize(s) + "</div>" +
+          (actions
+            ? '<div class="actions"><button class="btn btn--gold btn--sm" data-approve-sub="' + s.id + '">Approve &amp; add to tree</button>' +
+              '<button class="btn btn--outline btn--sm" data-reject-sub="' + s.id + '">Reject</button></div>'
+            : (s.review_note ? '<div class="meta">Note: ' + esc(s.review_note) + "</div>" : "")) +
+        "</div>";
+      let html = "";
+      if (pending.length) html += '<div class="list">' + pending.map(s => card(s, true)).join("") + "</div>";
+      else html += '<p class="empty">No pending submissions — the tree is all caught up. ✨</p>';
+      if (done.length) html += '<h3 style="font-family:Cinzel,serif;color:var(--purple-800);margin:1.4rem 0 .6rem">Recently reviewed</h3><div class="list">' + done.map(s => card(s, false)).join("") + "</div>";
+      return html;
+    }
+
+    function renderRequests(reqs) {
+      if (!reqs.length) return '<p class="empty">No access requests yet.</p>';
+      return '<div class="list">' + reqs.map((r) =>
+        '<div class="row" data-req="' + r.id + '">' +
+          "<h3>" + esc(r.full_name) + ' <span class="pill ' + r.status + '">' + r.status + "</span></h3>" +
+          '<div class="meta">' + esc(r.email) + (r.phone ? " · " + esc(r.phone) : "") + "<br>" +
+            (r.relationship ? "Relationship: " + esc(r.relationship) + "<br>" : "") +
+            (r.note ? "Note: " + esc(r.note) + "<br>" : "") +
+            "Requested: " + fmt(r.created_at) + "</div>" +
+          (r.status === "pending"
+            ? '<div class="actions"><button class="btn btn--gold btn--sm" data-approve="' + r.id + '" data-email="' + esc(r.email) + '">Approve &amp; create invite</button>' +
+              '<button class="btn btn--outline btn--sm" data-deny="' + r.id + '">Deny</button></div>'
+            : "") +
+          '<div class="invite-out"></div>' +
+        "</div>"
+      ).join("") + "</div>";
+    }
+
+    function renderMembers(members) {
+      if (!members.length) return '<p class="empty">No members yet.</p>';
+      const canRole = ME.role === "admin";
+      return '<div class="list">' + members.map((m) =>
+        '<div class="row">' +
+          "<h3>" + esc(m.full_name || m.email) +
+            ' <span class="pill ' + m.role + '">' + m.role + '</span> <span class="pill ' + m.status + '">' + m.status + "</span></h3>" +
+          '<div class="meta">' + esc(m.email) + (m.phone ? " · " + esc(m.phone) : "") + "</div>" +
+          '<div class="actions">' +
+            (canRole
+              ? 'Role: <select data-role="' + m.id + '">' +
+                ["member","elder","admin"].map((r)=>'<option value="'+r+'"'+(m.role===r?" selected":"")+">"+r+"</option>").join("") +
+                "</select>"
+              : "") +
+            'Status: <select data-status="' + m.id + '">' +
+              ["pending","active","suspended"].map((s)=>'<option value="'+s+'"'+(m.status===s?" selected":"")+">"+s+"</option>").join("") +
+              "</select>" +
+          "</div>" +
+        "</div>"
+      ).join("") + "</div>";
+    }
+
+    function renderSettings(s) {
+      const limit = s.photo_limit || "3";
+      const vids = s.videos_enabled === "true";
+      return '<div class="row"><h3>App Settings</h3>' +
+        '<div class="meta">These control limits across the whole app. Only admins can change them.</div>' +
+        '<div class="actions" style="margin-top:1rem;align-items:center;">Free photos per member: ' +
+          '<input id="set-photo" type="number" min="0" value="' + esc(limit) + '" style="width:76px;padding:.45rem;border-radius:8px;border:1px solid rgba(109,40,168,.3);" /></div>' +
+        '<div class="actions" style="margin-top:.8rem;align-items:center;">Video uploads (premium): ' +
+          '<select id="set-vids"><option value="false"' + (!vids ? " selected" : "") + ">Off</option>" +
+          '<option value="true"' + (vids ? " selected" : "") + ">On</option></select></div>" +
+        '<div class="actions" style="margin-top:1rem;align-items:center;"><button class="btn btn--gold btn--sm" id="save-settings">Save settings</button>' +
+          '<span id="set-msg" class="meta"></span></div>' +
+        '<div class="meta" style="margin-top:.9rem;">Turning video uploads <b>On</b> lets members upload videos. Collect any fee separately — the app does not process payments.</div>' +
+      "</div>";
+    }
+
+    function renderInvites(invites) {
+      const form = '<div class="row"><h3>Create an invite code</h3>' +
+        '<div class="actions">' +
+          '<input id="inv-email" placeholder="(optional) lock to email" style="padding:.5rem;border-radius:10px;border:1px solid #ccc;" />' +
+          '<select id="inv-role">' + ["member","elder","admin"].map((r)=>'<option value="'+r+'">'+r+"</option>").join("") + "</select>" +
+          '<button class="btn btn--gold btn--sm" id="inv-create">Create</button>' +
+        '</div><div id="inv-out"></div></div>';
+      const list = !invites.length ? '<p class="empty">No invites yet.</p>' :
+        '<div class="list">' + invites.map((i) =>
+          '<div class="row"><h3><span class="code">' + esc(i.code) + "</span> " +
+          '<span class="pill ' + i.role + '">' + i.role + '</span> ' +
+          '<span class="pill ' + (i.used ? "denied" : "active") + '">' + (i.used ? "used" : "open") + "</span></h3>" +
+          '<div class="meta">' + (i.email ? "For: " + esc(i.email) + " · " : "") + "Created: " + fmt(i.created_at) +
+          (i.expires_at ? " · Expires: " + fmt(i.expires_at) : "") + "</div></div>"
+        ).join("") + "</div>";
+      return form + "<div style='height:1rem'></div>" + list;
+    }
+
+    function bind() {
+      wrap.querySelectorAll("[data-tab]").forEach((b) =>
+        b.addEventListener("click", () => { TAB = b.dataset.tab; load(); }));
+
+      wrap.querySelectorAll("[data-approve]").forEach((b) =>
+        b.addEventListener("click", async () => {
+          b.disabled = true; b.textContent = "Approving…";
+          const id = b.dataset.approve, email = b.dataset.email;
+          const { code, error } = await MillerDB.createInvite({ email, role: "member", expiresDays: 60 });
+          if (error) { b.disabled = false; b.textContent = "Approve & create invite"; alert("Could not create invite."); return; }
+          await MillerDB.setAccessRequestStatus(id, "approved");
+          const out = b.closest(".row").querySelector(".invite-out");
+          out.innerHTML = '<div class="notice">Approved! Invite code for ' + esc(email) + ': <span class="code">' + esc(code) +
+            '</span> — send it to them by email or text. They sign in at <strong>login.html</strong> and enter this code.</div>';
+          b.closest(".actions").remove();
+        }));
+
+      wrap.querySelectorAll("[data-deny]").forEach((b) =>
+        b.addEventListener("click", async () => {
+          await MillerDB.setAccessRequestStatus(b.dataset.deny, "denied"); load();
+        }));
+
+      wrap.querySelectorAll("[data-approve-sub]").forEach((b) =>
+        b.addEventListener("click", async () => {
+          b.disabled = true; b.textContent = "Approving…";
+          const { data, error } = await MillerDB.approveSubmission(b.dataset.approveSub);
+          if (error || data !== "ok") { b.disabled = false; b.textContent = "Approve & add to tree"; alert("Could not approve: " + (error ? error.message : data)); return; }
+          load();
+        }));
+      wrap.querySelectorAll("[data-reject-sub]").forEach((b) =>
+        b.addEventListener("click", async () => {
+          const { error } = await MillerDB.rejectSubmission(b.dataset.rejectSub);
+          if (error) { alert("Could not reject: " + error.message); return; }
+          load();
+        }));
+
+      wrap.querySelectorAll("[data-role]").forEach((sel) =>
+        sel.addEventListener("change", async () => {
+          const { error } = await MillerDB.setRole(sel.dataset.role, sel.value);
+          if (error) alert("Could not change role (admins only).");
+        }));
+      wrap.querySelectorAll("[data-status]").forEach((sel) =>
+        sel.addEventListener("change", async () => {
+          const { error } = await MillerDB.setStatus(sel.dataset.status, sel.value);
+          if (error) alert("Could not change status.");
+        }));
+
+      const saveS = document.getElementById("save-settings");
+      if (saveS) saveS.addEventListener("click", async () => {
+        const m = document.getElementById("set-msg");
+        m.textContent = " saving…";
+        const pl = String(parseInt(document.getElementById("set-photo").value, 10) || 3);
+        const vids = document.getElementById("set-vids").value;
+        const r1 = await MillerDB.saveSetting("photo_limit", pl);
+        const r2 = await MillerDB.saveSetting("videos_enabled", vids);
+        m.textContent = (r1.error || r2.error) ? " could not save" : " saved ✓";
+      });
+
+      const invCreate = document.getElementById("inv-create");
+      if (invCreate) invCreate.addEventListener("click", async () => {
+        const email = document.getElementById("inv-email").value.trim();
+        const role = document.getElementById("inv-role").value;
+        const { code, error } = await MillerDB.createInvite({ email: email || null, role, expiresDays: 60 });
+        const out = document.getElementById("inv-out");
+        out.innerHTML = error ? '<div class="notice">Could not create invite.</div>'
+          : '<div class="notice">New code: <span class="code">' + esc(code) + "</span></div>";
+      });
+    }
+
+    (async function init() {
+      if (!MillerDB.configured) return gate("Backend isn't connected yet.");
+      await new Promise((r) => setTimeout(r, 300));
+      const session = await MillerDB.getSession();
+      if (!session) return gate("Please sign in first.");
+      ME = await MillerDB.getProfile();
+      if (!ME) return gate("Finishing sign-in… please refresh.");
+      if (!(ME.role === "admin" || ME.role === "elder") || ME.status !== "active")
+        return gate("You don't have reviewer access.");
+      who.textContent = (ME.full_name || ME.email) + " · " + ME.role;
+      if (location.hash === "#tree") TAB = "tree";
+      load();
+    })();
+  </script>
+</body>
+</html>

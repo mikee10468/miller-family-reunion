@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Event · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    body { background: linear-gradient(180deg, #faf5ef, #f1e8f7); min-height:100vh; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      background: linear-gradient(160deg, var(--purple-900), var(--purple-600)); color:#fff;
+      padding: calc(env(safe-area-inset-top,0px) + .9rem) 1rem .9rem; position:sticky; top:env(safe-area-inset-top,0px); z-index:20; }
+    .topbar .script { font-family:"Great Vibes",cursive; color:var(--gold); font-size:1.7rem; line-height:1; }
+    .topbar .sub { font-family:"Cinzel",serif; font-size:.7rem; letter-spacing:.1em; color:#e9dcff; }
+    .topbar a.home { color:var(--gold-soft); text-decoration:none; font-family:"Cinzel",serif; font-size:.85rem; }
+    .wrap { max-width:860px; margin:0 auto; padding:1.2rem 1rem calc(3rem + env(safe-area-inset-bottom,0px)); }
+    .card { background:#fff; border-radius:16px; box-shadow:var(--shadow); border:1px solid rgba(109,40,168,.12); padding:1.3rem; margin-bottom:1.4rem; }
+    .card h2 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .2rem; font-size:1.2rem; }
+    .card .lede { color:#6b5b7a; margin:.1rem 0 1rem; font-size:.92rem; }
+    .eventline { font-family:"Cinzel",serif; color:var(--purple-800); }
+    .banner { background:linear-gradient(160deg,var(--purple-900),var(--purple-600)); color:#fff; border-radius:16px; padding:1.1rem 1.3rem; margin-bottom:1.4rem; text-align:center; }
+    .banner b { color:var(--gold-soft); font-size:1.4rem; font-family:"Cinzel",serif; }
+    .field { display:block; margin:.7rem 0; }
+    .field span { font-family:"Cinzel",serif; font-size:.8rem; display:block; margin-bottom:.3rem; color:var(--purple-800); }
+    .field input, .field select, .field textarea { width:100%; padding:.6rem .8rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; }
+    .row { display:flex; gap:.7rem; flex-wrap:wrap; align-items:flex-end; }
+    .row .field { flex:1; min-width:120px; margin:0; }
+    .toggle { display:inline-flex; border:1px solid var(--purple-600); border-radius:999px; overflow:hidden; }
+    .toggle button { border:0; background:#fff; color:var(--purple-800); font:inherit; padding:.5rem 1.1rem; cursor:pointer; }
+    .toggle button.on { background:var(--purple-600); color:#fff; }
+    .msg { min-height:1.2em; font-family:"Cinzel",serif; margin-top:.5rem; } .msg.ok{color:#1b6b1b;} .msg.err{color:#b11;}
+    .catgroup { margin-top:1rem; } .catgroup h3 { font-family:"Cinzel",serif; color:var(--purple-600); font-size:.95rem; margin:.6rem 0 .3rem; text-transform:capitalize; }
+    .item { display:flex; justify-content:space-between; gap:.6rem; padding:.45rem 0; border-bottom:1px dashed rgba(109,40,168,.15); }
+    .item .who { color:#7a6a8a; font-size:.82rem; }
+    .item .del { background:transparent; border:0; color:#a33; cursor:pointer; font:inherit; font-size:.8rem; }
+    .vrole { padding:.8rem 0; border-bottom:1px solid #f0eaf6; }
+    .vrole:last-child { border-bottom:0; }
+    .vrole h3 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0; font-size:1rem; }
+    .vrole .desc { color:#6b5b7a; font-size:.85rem; margin:.1rem 0 .4rem; }
+    .vrole .names { font-size:.85rem; color:var(--purple-700,#5a1e8c); margin:.2rem 0; }
+    .chiplist { display:flex; flex-wrap:wrap; gap:.3rem; margin:.3rem 0; }
+    .nchip { background:#efe6f7; color:#5a1e8c; border-radius:999px; padding:.15rem .6rem; font-size:.78rem; }
+    .empty { color:#6b5b7a; font-style:italic; font-size:.85rem; }
+    .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div><div class="script">Family & Friends Day</div><div class="sub">JULY 3, 2027 · MELLON PARK</div></div>
+    <div><a class="home" href="tree.html">🌳 Tree</a> &nbsp; <a class="home" href="photos.html">📸 Photos</a> &nbsp; <a class="home" href="login.html">Account</a></div>
+  </div>
+
+  <div class="wrap" id="wrap"><div class="state"><p>Loading…</p></div></div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script>
+    const wrap = document.getElementById("wrap");
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    let ME = null, MYRSVP = null, ATTEND = true;
+
+    async function loadAll() {
+      const [rsvps, contribs, roles, signups] = await Promise.all([
+        MillerDB.listRsvps(), MillerDB.listContributions(), MillerDB.listVolunteerRoles(), MillerDB.listVolunteerSignups(),
+      ]);
+      return { rsvps: rsvps.data || [], contribs: contribs.data || [], roles: roles.data || [], signups: signups.data || [] };
+    }
+
+    function headcount(rsvps) {
+      const coming = rsvps.filter((r) => r.attending);
+      const people = coming.reduce((n, r) => n + (r.guest_count || 0), 0);
+      return { households: coming.length, people };
+    }
+
+    function rsvpCard() {
+      const a = MYRSVP ? MYRSVP.attending : true;
+      ATTEND = a;
+      const gc = MYRSVP ? MYRSVP.guest_count : 1;
+      const note = MYRSVP ? (MYRSVP.note || "") : "";
+      return '<div class="card"><h2>Will you be there?</h2>' +
+        '<p class="lede">Let the family know you\'re coming so we can plan.</p>' +
+        '<div class="toggle" id="att"><button data-a="1" class="' + (a ? "on" : "") + '">Yes, we\'re coming</button>' +
+          '<button data-a="0" class="' + (!a ? "on" : "") + '">Can\'t make it</button></div>' +
+        '<div class="row" style="margin-top:.9rem">' +
+          '<label class="field" id="gcf"><span>How many in your party (incl. you)?</span><input id="gc" type="number" min="0" value="' + esc(gc) + '" /></label>' +
+        "</div>" +
+        '<label class="field"><span>Note (optional)</span><input id="rnote" type="text" maxlength="160" value="' + esc(note) + '" placeholder="e.g. arriving after 2pm" /></label>' +
+        '<button class="btn btn--gold" id="savr">Save my RSVP</button><p class="msg" id="rmsg"></p></div>';
+    }
+
+    function potluckCard(contribs) {
+      const cats = ["food","drink","dessert","supplies","other"];
+      let groups = "";
+      cats.forEach((c) => {
+        const items = contribs.filter((x) => x.category === c);
+        if (!items.length) return;
+        groups += '<div class="catgroup"><h3>' + c + "</h3>" +
+          items.map((x) =>
+            '<div class="item"><div><strong>' + esc(x.item) + "</strong>" + (x.note ? ' <span class="who">— ' + esc(x.note) + "</span>" : "") +
+            '<div class="who">by ' + esc(x.owner_name || "a family member") + "</div></div>" +
+            (x.owner_id === ME.id || ME.role === "admin" ? '<button class="del" data-delc="' + x.id + '">remove</button>' : "") +
+            "</div>"
+          ).join("") + "</div>";
+      });
+      return '<div class="card"><h2>What I\'m Bringing</h2>' +
+        '<p class="lede">Claim a dish or supplies so we don\'t end up with ten potato salads. 🥔</p>' +
+        '<div class="row">' +
+          '<label class="field" style="flex:0 0 130px"><span>Category</span><select id="ccat">' +
+            cats.map((c) => '<option value="' + c + '">' + c + "</option>").join("") + "</select></label>" +
+          '<label class="field"><span>Item</span><input id="citem" type="text" maxlength="80" placeholder="e.g. Potato salad" /></label>' +
+          '<label class="field"><span>Note</span><input id="cnote" type="text" maxlength="80" placeholder="(optional)" /></label>' +
+        "</div>" +
+        '<button class="btn btn--gold" id="addc">Add to the list</button><p class="msg" id="cmsg"></p>' +
+        (groups || '<p class="empty" style="margin-top:1rem">Nothing on the list yet — add the first dish!</p>') +
+        "</div>";
+    }
+
+    function volunteerCard(roles, signups) {
+      const byRole = {};
+      signups.forEach((s) => (byRole[s.role_id] = byRole[s.role_id] || []).push(s));
+      const rows = roles.map((r) => {
+        const sgn = byRole[r.id] || [];
+        const mine = sgn.some((s) => s.member_id === ME.id);
+        const names = sgn.length ? '<div class="chiplist">' + sgn.map((s) => '<span class="nchip">' + esc(s.member_name || "Member") + "</span>").join("") + "</div>" : '<div class="empty">No volunteers yet</div>';
+        return '<div class="vrole"><h3>' + esc(r.name) + "</h3>" +
+          (r.description ? '<div class="desc">' + esc(r.description) + "</div>" : "") + names +
+          '<button class="btn btn--sm ' + (mine ? "btn--outline" : "btn--gold") + '" data-vol="' + r.id + '" data-mine="' + (mine ? "1" : "0") + '">' +
+            (mine ? "✓ I'm signed up — withdraw" : "I'll help") + "</button></div>";
+      }).join("");
+      return '<div class="card"><h2>Volunteer</h2><p class="lede">Many hands make a great reunion. Sign up to help with:</p>' + rows + "</div>";
+    }
+
+    async function render() {
+      const { rsvps, contribs, roles, signups } = await loadAll();
+      const hc = headcount(rsvps);
+      wrap.innerHTML =
+        '<div class="banner"><b>' + hc.people + "</b> family &amp; friends coming so far" +
+          (hc.households ? " · <b>" + hc.households + "</b> households RSVP’d" : "") + "</div>" +
+        '<div class="card"><div class="eventline">📅 Saturday, July 3, 2027 · 12–8 PM<br>📍 Mellon Park, Pittsburgh PA 15206</div></div>' +
+        rsvpCard() + potluckCard(contribs) + volunteerCard(roles, signups);
+      wire();
+    }
+
+    function wire() {
+      // RSVP toggle
+      wrap.querySelectorAll("#att button").forEach((b) => b.addEventListener("click", () => {
+        ATTEND = b.dataset.a === "1";
+        wrap.querySelectorAll("#att button").forEach((x) => x.classList.toggle("on", x === b));
+        document.getElementById("gcf").style.opacity = ATTEND ? "1" : ".4";
+      }));
+      const savr = document.getElementById("savr");
+      if (savr) savr.addEventListener("click", async () => {
+        const gc = ATTEND ? (parseInt(document.getElementById("gc").value, 10) || 1) : 0;
+        const note = document.getElementById("rnote").value.trim();
+        const m = document.getElementById("rmsg"); m.textContent = "Saving…"; m.className = "msg";
+        const { error } = await MillerDB.saveRsvp({ attending: ATTEND, guest_count: gc, note });
+        if (error) { m.textContent = "Could not save: " + error.message; m.className = "msg err"; return; }
+        MYRSVP = await MillerDB.getMyRsvp();
+        render();
+      });
+
+      const addc = document.getElementById("addc");
+      if (addc) addc.addEventListener("click", async () => {
+        const item = document.getElementById("citem").value.trim();
+        const category = document.getElementById("ccat").value;
+        const note = document.getElementById("cnote").value.trim();
+        const m = document.getElementById("cmsg");
+        if (!item) { m.textContent = "Please enter what you're bringing."; m.className = "msg err"; return; }
+        m.textContent = "Adding…"; m.className = "msg";
+        const { error } = await MillerDB.addContribution({ item, category, note });
+        if (error) { m.textContent = "Could not add: " + error.message; m.className = "msg err"; return; }
+        render();
+      });
+
+      wrap.querySelectorAll("[data-delc]").forEach((b) => b.addEventListener("click", async () => {
+        await MillerDB.deleteContribution(b.dataset.delc); render();
+      }));
+
+      wrap.querySelectorAll("[data-vol]").forEach((b) => b.addEventListener("click", async () => {
+        b.disabled = true;
+        const id = b.dataset.vol;
+        const res = b.dataset.mine === "1" ? await MillerDB.withdrawVolunteer(id) : await MillerDB.signupVolunteer(id);
+        if (res.error) { b.disabled = false; alert("Could not update: " + res.error.message); return; }
+        render();
+      }));
+    }
+
+    (async function init() {
+      if (!MillerDB.configured) { wrap.innerHTML = '<div class="state"><h2>Not connected yet</h2><p><a href="index.html">Back to the family page</a></p></div>'; return; }
+      await new Promise((r) => setTimeout(r, 250));
+      const session = await MillerDB.getSession();
+      if (!session) { location.href = "login.html"; return; }
+      ME = await MillerDB.getProfile();
+      if (!ME) { wrap.innerHTML = '<div class="state"><p>Finishing sign-in… <a href="event.html">refresh</a>.</p></div>'; return; }
+      if (ME.status !== "active") {
+        wrap.innerHTML = '<div class="state"><h2>Almost there!</h2><p>Your access is pending approval. Once an elder approves you, you can RSVP here.</p><p><a class="btn btn--gold" href="login.html">My Account</a></p></div>';
+        return;
+      }
+      MYRSVP = await MillerDB.getMyRsvp();
+      render();
+    })();
+  </script>
+</body>
+</html>
