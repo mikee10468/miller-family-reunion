@@ -38,8 +38,13 @@
     .amp { color:#8a2b6b; font-weight:700; }
     .subbanner { text-align:center; margin:.8rem 0 1.1rem; }
     .subbanner span { display:inline-block; background:var(--purple-800); color:var(--gold-soft); font-family:"Cinzel",serif; font-size:.78rem; letter-spacing:.06em; padding:.3rem 1.1rem; border-radius:999px; }
-    .cols { display:flex; gap:1rem; flex-wrap:wrap; justify-content:center; align-items:flex-start; }
-    .col { flex:0 0 auto; width:270px; max-width:92vw; background:#fbf6ee; border:2px solid var(--gold); border-radius:16px; overflow:hidden; box-shadow:0 6px 16px rgba(42,7,66,.14); }
+    .cols { display:flex; gap:1rem; flex-wrap:nowrap; align-items:flex-start; overflow-x:auto; -webkit-overflow-scrolling:touch;
+      padding:.3rem .2rem 1rem; scroll-snap-type:x proximity; }
+    .cols::-webkit-scrollbar { height:10px; }
+    .cols::-webkit-scrollbar-thumb { background:var(--gold); border-radius:999px; }
+    .cols::-webkit-scrollbar-track { background:rgba(109,40,168,.12); border-radius:999px; }
+    .col { flex:0 0 auto; width:250px; scroll-snap-align:start; background:#fbf6ee; border:2px solid var(--gold); border-radius:16px; overflow:hidden; box-shadow:0 6px 16px rgba(42,7,66,.14); }
+    .scrollhint { text-align:center; color:#8a6a00; font-family:"Cinzel",serif; font-size:.72rem; letter-spacing:.05em; margin:.2rem 0 -.2rem; }
     .col__head { background:linear-gradient(180deg,var(--purple-600),var(--purple-800)); color:#fff; text-align:center; padding:.7rem .5rem; }
     .col__spouse { margin-top:.3rem; }
     .col__body { padding:.7rem .6rem 1rem; }
@@ -231,6 +236,7 @@
       let html = '<div class="family">' + coupleRibbon(rootId);
       if (kids.length) {
         html += '<div class="subbanner"><span>Their ' + kids.length + (kids.length === 1 ? " child" : " children") + "</span></div>";
+        html += kids.length > 3 ? '<div class="scrollhint">← swipe sideways to see all ' + kids.length + " →</div>" : "";
         html += '<div class="cols">' + kids.map((k) => columnFor(k.id)).join("") + "</div>";
       }
       return html + "</div>";
