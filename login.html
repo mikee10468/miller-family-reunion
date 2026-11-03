@@ -68,27 +68,30 @@
     function signInForm(msg, msgClass) {
       render(
         '<h1>Family Sign In</h1>' +
-        "<p>Enter your email and we'll send you a secure sign-in link — no password needed.</p>" +
+        "<p>Sign in with the email and password your family admin gave you.</p>" +
         '<form id="login-form">' +
           '<label class="field"><span>Email</span><input type="email" name="email" required autocomplete="email" placeholder="you@example.com" /></label>' +
-          '<button class="btn btn--gold btn--block" type="submit">Send My Sign-In Link</button>' +
+          '<label class="field"><span>Password</span><input type="password" name="password" required autocomplete="current-password" placeholder="Your password" /></label>' +
+          '<button class="btn btn--gold btn--block" type="submit">Sign In</button>' +
           '<p class="msg ' + (msgClass || "") + '" id="msg">' + (msg || "") + "</p>" +
         "</form>" +
         '<hr class="divider" />' +
-        '<p class="quiet">New here? <a href="index.html">Request access first →</a></p>'
+        '<p class="quiet">New here? <a href="index.html">Request access →</a><br />' +
+        "Forgot your password? Ask a family admin to reset it for you.</p>"
       );
       document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const email = e.target.email.value.trim();
+        const password = e.target.password.value;
         const m = document.getElementById("msg");
-        m.textContent = "Sending…"; m.className = "msg";
-        const { error } = await MillerDB.sendMagicLink(email, window.location.origin + window.location.pathname);
-        if (error) { m.textContent = error.message || "Could not send the link. Try again."; m.className = "msg err"; return; }
-        render(
-          '<h1>Check your email 📬</h1>' +
-          "<p>We sent a sign-in link to <strong>" + esc(email) + "</strong>. Open it on this device to finish signing in.</p>" +
-          "<p class='quiet'>Didn't get it? Check spam, or <a href='login.html'>try again</a>.</p>"
-        );
+        m.textContent = "Signing in…"; m.className = "msg";
+        const { error } = await MillerDB.signInWithPassword(email, password);
+        if (error) {
+          m.textContent = /invalid/i.test(error.message || "") ? "Email or password is incorrect." : (error.message || "Could not sign in.");
+          m.className = "msg err";
+          return;
+        }
+        location.reload();
       });
     }
 
@@ -131,9 +134,31 @@
           (reviewer ? '<a class="btn btn--outline btn--block" href="admin.html">Admin / Approvals Panel</a>' : "") +
         "</div>" +
         '<hr class="divider" />' +
-        '<button class="btn btn--outline btn--block" id="signout">Sign Out</button>'
+        '<button class="btn btn--outline btn--block" id="changepw">Change my password</button>' +
+        '<div id="pwbox"></div>' +
+        '<button class="btn btn--outline btn--block" id="signout" style="margin-top:.6rem">Sign Out</button>'
       );
       document.getElementById("signout").addEventListener("click", async () => { await MillerDB.signOut(); location.reload(); });
+      document.getElementById("changepw").addEventListener("click", () => {
+        const box = document.getElementById("pwbox");
+        if (box.dataset.open === "1") { box.innerHTML = ""; box.dataset.open = ""; return; }
+        box.dataset.open = "1";
+        box.innerHTML =
+          '<form id="pwform" style="margin-top:.6rem">' +
+            '<label class="field"><span>New password (at least 8 characters)</span>' +
+            '<input type="password" name="pw" minlength="8" required autocomplete="new-password" /></label>' +
+            '<button class="btn btn--gold btn--block" type="submit">Update password</button>' +
+            '<p class="msg" id="pwmsg"></p></form>';
+        document.getElementById("pwform").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const pw = e.target.pw.value;
+          const pm = document.getElementById("pwmsg");
+          pm.textContent = "Updating…"; pm.className = "msg";
+          const { error } = await MillerDB.updatePassword(pw);
+          if (error) { pm.textContent = error.message || "Could not update."; pm.className = "msg err"; return; }
+          pm.textContent = "Password updated! Use it next time you sign in."; pm.className = "msg ok";
+        });
+      });
     }
 
     (async function init() {

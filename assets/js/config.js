@@ -13,6 +13,7 @@ window.MILLER_CONFIG = {
   photoLimitPerUser: 3,       // free photos per member (Step 4)
   videosEnabled: false,       // premium video uploads off until you set a fee (Step 4)
   facebookPageUrl: "",        // your family Facebook page/group, for the Share button
+  siteUrl: "https://mikee10468.github.io/miller-family-reunion/", // public app URL (used in invite messages)
 };
 
 // True only when real keys have been pasted in.

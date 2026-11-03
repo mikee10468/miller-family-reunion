@@ -23,6 +23,18 @@
         options: { emailRedirectTo: redirectTo || window.location.origin + "/login.html" },
       });
     },
+    async signInWithPassword(email, password) {
+      return client.auth.signInWithPassword({ email: (email || "").trim(), password });
+    },
+    async updatePassword(newPassword) {
+      return client.auth.updateUser({ password: newPassword });
+    },
+    // Admin-only: create/re-password a member's login (returns { email, password })
+    async adminCreateMember({ email, full_name, role }) {
+      return client.functions.invoke("admin-create-member", {
+        body: { email, full_name: full_name || null, role: role || "member" },
+      });
+    },
     async getSession() {
       if (!client) return null;
       const { data } = await client.auth.getSession();

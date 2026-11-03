@@ -154,9 +154,10 @@
             (r.relationship ? "Relationship: " + esc(r.relationship) + "<br>" : "") +
             (r.note ? "Note: " + esc(r.note) + "<br>" : "") +
             "Requested: " + fmt(r.created_at) + "</div>" +
-          (r.status === "pending"
-            ? '<div class="actions"><button class="btn btn--gold btn--sm" data-approve="' + r.id + '" data-email="' + esc(r.email) + '">Approve &amp; create invite</button>' +
-              '<button class="btn btn--outline btn--sm" data-deny="' + r.id + '">Deny</button></div>'
+          (r.status !== "denied"
+            ? '<div class="actions"><button class="btn btn--gold btn--sm" data-approve="' + r.id + '" data-email="' + esc(r.email) + '" data-name="' + esc(r.full_name || "") + '">' +
+              (r.status === "pending" ? "Approve &amp; create login" : "Create / resend login") + "</button>" +
+              (r.status === "pending" ? '<button class="btn btn--outline btn--sm" data-deny="' + r.id + '">Deny</button>' : "") + "</div>"
             : "") +
           '<div class="invite-out"></div>' +
         "</div>"
@@ -180,9 +181,31 @@
             'Status: <select data-status="' + m.id + '">' +
               ["pending","active","suspended"].map((s)=>'<option value="'+s+'"'+(m.status===s?" selected":"")+">"+s+"</option>").join("") +
               "</select>" +
+            (canRole ? ' <button class="btn btn--sm btn--outline" data-setpw="' + m.id + '" data-email="' + esc(m.email) + '" data-name="' + esc(m.full_name || "") + '">Set / reset password</button>' : "") +
           "</div>" +
+          '<div class="pw-out"></div>' +
         "</div>"
       ).join("") + "</div>";
+    }
+
+    // Build a ready-to-send message with the member's login, + a copy button
+    function credBlurb(name, email, password) {
+      const site = (window.MILLER_CONFIG && window.MILLER_CONFIG.siteUrl) || location.origin;
+      const first = name ? String(name).split(" ")[0] : "there";
+      const msg = "Hi " + first + "! You've been added to the Miller Family app.\n\n" +
+        "Open: " + site + "\nTap \"Sign In\" and use:\n" +
+        "Email: " + email + "\nPassword: " + password + "\n\n" +
+        "You can change your password after you sign in.";
+      return '<div class="notice">Login ready — send this to them by text or email:' +
+        '<textarea class="credmsg" readonly rows="8" style="width:100%;margin-top:.5rem;font-family:ui-monospace,Consolas,monospace;font-size:.82rem;border-radius:8px;padding:.6rem;border:1px solid #d9c6ec;">' + esc(msg) + "</textarea>" +
+        '<button class="btn btn--gold btn--sm" data-copy>Copy message</button></div>';
+    }
+    function wireCopy(container) {
+      const btn = container.querySelector("[data-copy]");
+      const ta = container.querySelector(".credmsg");
+      if (btn && ta) btn.addEventListener("click", () => {
+        navigator.clipboard.writeText(ta.value).then(() => { btn.textContent = "Copied ✓"; }, () => { ta.select(); });
+      });
     }
 
     function renderSettings(s) {
@@ -225,15 +248,34 @@
 
       wrap.querySelectorAll("[data-approve]").forEach((b) =>
         b.addEventListener("click", async () => {
-          b.disabled = true; b.textContent = "Approving…";
-          const id = b.dataset.approve, email = b.dataset.email;
-          const { code, error } = await MillerDB.createInvite({ email, role: "member", expiresDays: 60 });
-          if (error) { b.disabled = false; b.textContent = "Approve & create invite"; alert("Could not create invite."); return; }
+          const origLabel = b.innerHTML;
+          b.disabled = true; b.textContent = "Creating login…";
+          const id = b.dataset.approve, email = b.dataset.email, name = b.dataset.name || "";
+          const { data, error } = await MillerDB.adminCreateMember({ email, full_name: name });
+          if (error || !data || data.error || !data.password) {
+            b.disabled = false; b.innerHTML = origLabel;
+            alert("Could not create login: " + (error ? error.message : (data && data.error) || "unknown error"));
+            return;
+          }
           await MillerDB.setAccessRequestStatus(id, "approved");
           const out = b.closest(".row").querySelector(".invite-out");
-          out.innerHTML = '<div class="notice">Approved! Invite code for ' + esc(email) + ': <span class="code">' + esc(code) +
-            '</span> — send it to them by email or text. They sign in at <strong>login.html</strong> and enter this code.</div>';
+          out.innerHTML = credBlurb(name, email, data.password);
+          wireCopy(out);
           b.closest(".actions").remove();
+        }));
+
+      wrap.querySelectorAll("[data-setpw]").forEach((b) =>
+        b.addEventListener("click", async () => {
+          b.disabled = true; const label = b.textContent; b.textContent = "Working…";
+          const { data, error } = await MillerDB.adminCreateMember({ email: b.dataset.email, full_name: b.dataset.name || "" });
+          b.disabled = false; b.textContent = label;
+          if (error || !data || data.error || !data.password) {
+            alert("Could not set password: " + (error ? error.message : (data && data.error) || "unknown error"));
+            return;
+          }
+          const out = b.closest(".row").querySelector(".pw-out");
+          out.innerHTML = credBlurb(b.dataset.name || "", b.dataset.email, data.password);
+          wireCopy(out);
         }));
 
       wrap.querySelectorAll("[data-deny]").forEach((b) =>
