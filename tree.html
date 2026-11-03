@@ -23,38 +23,53 @@
     .toolbar { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; padding:.8rem 1rem; }
     .hint { color:#6b5b7a; font-size:.85rem; }
 
-    /* ---- Tree ---- */
-    .tree-scroll { overflow:auto; padding: 1rem 1rem 3rem; -webkit-overflow-scrolling: touch; }
-    .tree { display:inline-block; min-width:100%; }
-    .tree ul { position:relative; padding:1.4em 0 0; white-space:nowrap; margin:0 auto; text-align:center; list-style:none; }
-    .tree li { display:inline-block; vertical-align:top; text-align:center; list-style:none; position:relative; padding:1.4em .4em 0 .4em; }
-    .tree li::before, .tree li::after { content:''; position:absolute; top:0; right:50%; border-top:2px solid var(--line); width:50%; height:1.4em; }
-    .tree li::after { right:auto; left:50%; border-left:2px solid var(--line); }
-    .tree li:only-child::after, .tree li:only-child::before { display:none; }
-    .tree li:only-child { padding-top:0; }
-    .tree li:first-child::before, .tree li:last-child::after { border:0 none; }
-    .tree li:last-child::before { border-right:2px solid var(--line); border-radius:0 6px 0 0; }
-    .tree li:first-child::after { border-radius:6px 0 0 0; }
-    .tree ul ul::before { content:''; position:absolute; top:0; left:50%; border-left:2px solid var(--line); width:0; height:1.4em; }
-    .tree > ul > li::before, .tree > ul > li::after { display:none; }
-    .tree li.collapsed > ul { display:none; }
+    /* ---- Decorative tree (poster style) ---- */
+    .tree-header { text-align:center; color:#fff; padding:1.7rem 1rem 1.5rem;
+      background:radial-gradient(900px 400px at 50% -20%, rgba(230,180,34,.25), transparent 60%), linear-gradient(160deg,var(--purple-900),var(--purple-600));
+      border-bottom:4px solid var(--gold); }
+    .tree-header .doves { font-size:1.3rem; letter-spacing:.5rem; }
+    .tree-header h1 { font-family:"Great Vibes",cursive; color:var(--gold); font-size:clamp(2rem,7vw,3.4rem); margin:.2rem 0 0; line-height:1; text-shadow:0 2px 10px rgba(0,0,0,.3); }
+    .tree-header .tagline { font-family:"Cinzel",serif; letter-spacing:.08em; font-size:.78rem; color:#e9dcff; margin-top:.5rem; }
+    .families { padding:1.4rem 1rem 3rem; max-width:1120px; margin:0 auto; }
+    .family { margin:0 auto 2.6rem; }
+    .ribbon { display:flex; align-items:center; justify-content:center; gap:.4rem; flex-wrap:wrap; margin:0 auto; max-width:640px;
+      background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#3a2a00; border:2px solid #b9892a; border-radius:16px;
+      padding:.7rem 1.2rem; box-shadow:0 8px 20px rgba(230,180,34,.35); }
+    .amp { color:#8a2b6b; font-weight:700; }
+    .subbanner { text-align:center; margin:.8rem 0 1.1rem; }
+    .subbanner span { display:inline-block; background:var(--purple-800); color:var(--gold-soft); font-family:"Cinzel",serif; font-size:.78rem; letter-spacing:.06em; padding:.3rem 1.1rem; border-radius:999px; }
+    .cols { display:flex; gap:1rem; flex-wrap:wrap; justify-content:center; align-items:flex-start; }
+    .col { flex:0 0 auto; width:208px; background:#fbf6ee; border:2px solid var(--gold); border-radius:16px; overflow:hidden; box-shadow:0 6px 16px rgba(42,7,66,.14); }
+    .col__head { background:linear-gradient(180deg,var(--purple-600),var(--purple-800)); color:#fff; text-align:center; padding:.7rem .5rem; }
+    .col__spouse { margin-top:.3rem; }
+    .col__body { padding:.7rem .6rem 1rem; }
+    .col__title { font-family:"Cinzel",serif; font-size:.72rem; color:var(--purple-600); text-align:center; margin:.2rem 0 .6rem; text-transform:uppercase; letter-spacing:.05em; }
+    .col__empty { text-align:center; color:#b09; opacity:.5; font-style:italic; font-size:.8rem; padding:.3rem 0; }
 
-    .couple { display:inline-flex; align-items:stretch; gap:0; background:#fff; border-radius:14px;
-      box-shadow:0 6px 16px rgba(42,7,66,.12); border:1px solid rgba(109,40,168,.12); overflow:hidden; }
-    .chip { border:0; background:#fff; cursor:pointer; font:inherit; padding:.55rem .8rem; text-align:center;
-      display:flex; flex-direction:column; gap:.1rem; min-width:84px; transition:background .15s; }
-    .chip:hover { background:#f6eefc; }
-    .chip + .chip { border-left:1px dashed rgba(109,40,168,.25); }
-    .chip__name { font-family:"Cinzel",serif; color:var(--purple-800); font-size:.92rem; font-weight:600; white-space:nowrap; }
-    .chip__years { font-size:.72rem; color:#7a6a8a; }
-    .chip__maiden { font-size:.68rem; color:#9a7; font-style:italic; }
-    .chip__photo { width:48px; height:48px; border-radius:50%; object-fit:cover; display:block; margin:0 auto 3px; border:2px solid var(--gold); background:#eee; }
-    .chip--male .chip__name { color:#274b8a; }
-    .chip--female .chip__name { color:#8a2b6b; }
-    .chip.dec .chip__name::after { content:" ✝"; color:#b98bdd; font-size:.7em; }
-    .caret { display:inline-block; margin-top:.3rem; border:0; background:var(--purple-600); color:#fff; cursor:pointer;
-      width:22px; height:22px; border-radius:50%; font-size:.8rem; line-height:1; }
-    .node-wrap { display:inline-flex; flex-direction:column; align-items:center; }
+    /* clickable person nodes (shared) */
+    .node { border:0; cursor:pointer; font:inherit; background:transparent; display:inline-flex; align-items:center; gap:.35rem; text-align:left; transition:filter .15s; padding:0; }
+    .node:hover { filter:brightness(1.06); }
+    .node__photo { width:28px; height:28px; border-radius:50%; object-fit:cover; border:2px solid var(--gold); background:#eee; flex:0 0 auto; }
+    .node__name { font-family:"Cinzel",serif; }
+    .node__years { font-size:.68rem; color:#7a6a8a; }
+    .node.dec .node__name::after { content:" ✝"; color:#b98bdd; font-size:.75em; }
+    /* couple names on the gold ribbon */
+    .ribbon .node .node__name { font-size:clamp(1rem,3.5vw,1.3rem); font-weight:700; color:#3a2a00; }
+    .ribbon .node .node__photo { width:36px; height:36px; }
+    /* child heart atop a column */
+    .heart { flex-direction:column; align-items:center; gap:.12rem; }
+    .heart::before { content:"♥"; color:var(--gold-soft); font-size:.85rem; line-height:1; }
+    .heart .node__name { font-size:1rem; color:#fff; text-align:center; }
+    .heart .node__years { color:#e9dcff; }
+    .heart .node__photo { width:44px; height:44px; }
+    .col__spouse .node__name { font-size:.8rem; color:#e9dcff; }
+    /* descendant pills, nested by generation */
+    .desc { list-style:none; margin:0; padding:0; }
+    .desc .desc { margin-left:.55rem; border-left:2px dotted #d9c6ec; padding-left:.5rem; margin-top:.2rem; }
+    .desc li { margin:.32rem 0; }
+    .pill { background:#efe6f7; border:1px solid rgba(109,40,168,.25); border-radius:999px; padding:.2rem .55rem; }
+    .pill .node__name { font-size:.8rem; color:var(--purple-800); }
+    .pill .node__photo { width:22px; height:22px; }
 
     /* ---- Modal ---- */
     .modal { position:fixed; inset:0; background:rgba(20,4,36,.6); display:flex; align-items:center; justify-content:center; z-index:60; padding:1rem; }
@@ -146,60 +161,117 @@
     }
 
     const rendered = {};
-    function chip(p) {
-      const cls = "chip " + (p.gender === "male" ? "chip--male" : p.gender === "female" ? "chip--female" : "") + (p.is_living === false ? " dec" : "");
-      const maiden = p.maiden_name ? '<span class="chip__maiden">née ' + esc(p.maiden_name) + "</span>" : "";
+    const firstName = (n) => String(n || "").split(" ")[0];
+
+    function personNode(p, variant) {
+      const dec = p.is_living === false ? " dec" : "";
+      const photo = PHOTO[p.id] ? '<img class="node__photo" src="' + PHOTO[p.id] + '" alt="" />' : "";
       const yrs = yearsLine(p);
-      const photo = PHOTO[p.id] ? '<img class="chip__photo" src="' + PHOTO[p.id] + '" alt="" />' : "";
-      return '<button class="' + cls + '" data-id="' + p.id + '">' + photo +
-        '<span class="chip__name">' + esc(p.full_name) + "</span>" +
-        (yrs ? '<span class="chip__years">' + yrs + "</span>" : "") + maiden +
-        "</button>";
+      if (variant === "ribbon") {
+        return '<button class="node' + dec + '" data-id="' + p.id + '">' + photo +
+          '<span class="node__name">' + esc(p.full_name) + "</span></button>";
+      }
+      if (variant === "heart") {
+        return '<button class="node heart' + dec + '" data-id="' + p.id + '">' + photo +
+          '<span class="node__name">' + esc(p.full_name) + "</span>" +
+          (yrs ? '<span class="node__years">' + yrs + "</span>" : "") + "</button>";
+      }
+      // pill
+      return '<button class="node pill' + dec + '" data-id="' + p.id + '">' + photo +
+        '<span class="node__name">' + esc(p.full_name) + "</span></button>";
     }
-    function renderNode(id) {
-      if (rendered[id]) return "";
-      rendered[id] = 1;
-      const p = BYID[id];
-      if (!p) return "";
-      const partnerId = effectivePartner(id);
-      if (partnerId) rendered[partnerId] = 1;
-      let couple = '<div class="couple">' + chip(p) + (partnerId ? chip(BYID[partnerId]) : "") + "</div>";
-      const kids = unionChildren(id, partnerId);
-      const kidsHtml = kids.map(k => renderNode(k.id)).join("");
-      const caret = kids.length ? '<button class="caret" data-caret title="Collapse / expand">▾</button>' : "";
-      return "<li><div class='node-wrap'>" + couple + caret + "</div>" +
-        (kids.length ? "<ul>" + kidsHtml + "</ul>" : "") + "</li>";
+
+    function descendantCount(id, seen) {
+      seen = seen || {}; if (seen[id]) return 0; seen[id] = 1;
+      const kids = unionChildren(id, effectivePartner(id));
+      let n = kids.length;
+      kids.forEach((k) => { n += descendantCount(k.id, seen); });
+      return n;
+    }
+
+    // nested list of a person's descendants (used inside a child's column)
+    function descListFrom(kids) {
+      let html = '<ul class="desc">';
+      kids.forEach((k) => {
+        rendered[k.id] = 1;
+        const pid = effectivePartner(k.id); const sp = pid ? BYID[pid] : null; if (sp) rendered[pid] = 1;
+        const gk = unionChildren(k.id, pid);
+        html += "<li>" + personNode(k, "pill") +
+          (sp ? ' <span class="amp" style="font-size:.75rem">♥</span> ' + personNode(sp, "pill") : "") +
+          (gk.length ? descListFrom(gk) : "") + "</li>";
+      });
+      return html + "</ul>";
+    }
+
+    function columnFor(childId) {
+      const child = BYID[childId];
+      rendered[childId] = 1;
+      const pid = effectivePartner(childId); const spouse = pid ? BYID[pid] : null; if (spouse) rendered[pid] = 1;
+      const kids = unionChildren(childId, pid);
+      return '<div class="col">' +
+        '<div class="col__head">' + personNode(child, "heart") +
+          (spouse ? '<div class="col__spouse"><span class="amp">♥</span> ' + personNode(spouse, "pill") + "</div>" : "") +
+        "</div>" +
+        '<div class="col__body"><div class="col__title">' + esc(firstName(child.full_name)) + "'s children</div>" +
+          (kids.length ? descListFrom(kids) : '<div class="col__empty">— no children recorded —</div>') +
+        "</div></div>";
+    }
+
+    function coupleRibbon(aId) {
+      let a = BYID[aId]; const pid = effectivePartner(aId); let b = pid ? BYID[pid] : null;
+      if (b && a.gender === "female" && b.gender === "male") { const t = a; a = b; b = t; } // husband first, like the poster
+      return '<div class="ribbon">' + personNode(a, "ribbon") +
+        (b ? '<span class="amp">♥</span>' + personNode(b, "ribbon") : "") + "</div>";
+    }
+
+    function familyBlock(rootId) {
+      rendered[rootId] = 1;
+      const pid = effectivePartner(rootId); if (pid) rendered[pid] = 1;
+      const kids = unionChildren(rootId, pid);
+      let html = '<div class="family">' + coupleRibbon(rootId);
+      if (kids.length) {
+        html += '<div class="subbanner"><span>Their ' + kids.length + (kids.length === 1 ? " child" : " children") + "</span></div>";
+        html += '<div class="cols">' + kids.map((k) => columnFor(k.id)).join("") + "</div>";
+      }
+      return html + "</div>";
     }
 
     function renderTree() {
       for (const k in rendered) delete rendered[k];
-      const roots = PERSONS.filter(p => !p.father_id && !p.mother_id)
-        .filter(p => {
-          const pid = effectivePartner(p.id);
-          if (!pid || !BYID[pid]) return true;
-          const sp = BYID[pid];
-          return !sp.father_id && !sp.mother_id; // exclude married-in spouses
-        });
-      let html = "<ul>" + roots.map(r => renderNode(r.id)).filter(Boolean).join("") + "</ul>";
-      // any persons not yet rendered (orphans / disconnected) get their own root
-      const leftovers = PERSONS.filter(p => !rendered[p.id]);
-      if (leftovers.length) html += "<ul>" + leftovers.map(p => renderNode(p.id)).join("") + "</ul>";
+      let roots = PERSONS.filter((p) => !p.father_id && !p.mother_id).filter((p) => {
+        const pid = effectivePartner(p.id);
+        if (!pid || !BYID[pid]) return true;
+        const sp = BYID[pid];
+        return !sp.father_id && !sp.mother_id; // exclude married-in spouses
+      });
+      roots.sort((a, b) => descendantCount(b.id) - descendantCount(a.id)); // founders (most descendants) first
+      let blocks = "";
+      roots.forEach((r) => { if (!rendered[r.id]) blocks += familyBlock(r.id); });
+
+      // anyone still unrendered (disconnected elders like Levi) → "Other family members"
+      const leftovers = PERSONS.filter((p) => !rendered[p.id]);
+      let eldersHtml = "";
+      if (leftovers.length) {
+        eldersHtml = '<div class="family"><div class="subbanner"><span>Other family members</span></div><div class="cols">' +
+          leftovers.map((p) => { rendered[p.id] = 1; return '<div class="col"><div class="col__head">' + personNode(p, "heart") + "</div></div>"; }).join("") +
+          "</div></div>";
+      }
 
       const reviewer = ME.role === "admin" || ME.role === "elder";
       app.innerHTML =
+        '<div class="tree-header"><div class="doves">🕊️ 🌳 🕊️</div><h1>The Miller Family Tree</h1>' +
+          '<div class="tagline">Different Generations ~ Same Family ~ One Love</div></div>' +
         '<div class="toolbar">' +
-          '<span class="hint">Tap a name for details' + (ME.status === "active" ? ", or to add relatives" : "") + '. Tap ▾ to collapse a branch.</span>' +
+          '<span class="hint">Tap any name for details' + (ME.status === "active" ? ", or to add relatives" : "") + ".</span>" +
           (reviewer ? '<a class="btn btn--sm btn--gold" href="admin.html#tree">Review submissions</a>' : "") +
         "</div>" +
-        '<div class="tree-scroll"><div class="tree">' + html + "</div></div>";
+        '<div class="families">' + blocks + eldersHtml + "</div>";
     }
 
     /* ---------- interactions ---------- */
     app.addEventListener("click", (e) => {
-      const caret = e.target.closest("[data-caret]");
-      if (caret) { caret.closest("li").classList.toggle("collapsed"); caret.textContent = caret.closest("li").classList.contains("collapsed") ? "▸" : "▾"; return; }
-      const chipBtn = e.target.closest(".chip");
-      if (chipBtn) openDetail(chipBtn.dataset.id);
+      const n = e.target.closest(".node");
+      if (n) openDetail(n.dataset.id);
     });
 
     function closeModal() { modalRoot.innerHTML = ""; }
