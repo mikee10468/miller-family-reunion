@@ -325,6 +325,7 @@
           '<button class="btn btn--sm btn--gold" data-act="edit">Suggest an edit</button>' +
           '<button class="btn btn--sm btn--outline" data-act="child">Add a child</button>' +
           '<button class="btn btn--sm btn--outline" data-act="parent">Add a parent</button>' +
+          '<button class="btn btn--sm btn--outline" data-act="sibling">Add a sibling</button>' +
           (partnerId ? "" : '<button class="btn btn--sm btn--outline" data-act="spouse">Add a spouse</button>') +
           '<p class="hint" style="margin-top:.6rem">Changes are reviewed by a family elder before they appear.</p>';
       }
@@ -333,6 +334,7 @@
         modalRoot.querySelector('[data-act="edit"]').onclick = () => openEdit(p);
         modalRoot.querySelector('[data-act="child"]').onclick = () => openAddChild(p, partnerId);
         modalRoot.querySelector('[data-act="parent"]').onclick = () => openAddParent(p);
+        modalRoot.querySelector('[data-act="sibling"]').onclick = () => openAddSibling(p);
         const sp = modalRoot.querySelector('[data-act="spouse"]'); if (sp) sp.onclick = () => openAddSpouse(p);
       }
     }
@@ -403,6 +405,21 @@
         e.preventDefault();
         const role = f.role.value === "mother" ? "mother" : "father";
         submitForm("add", null, { child_id: p.id, child_role: role }, f, document.getElementById("m"));
+      };
+    }
+    function openAddSibling(p) {
+      const hasParents = !!(p.father_id || p.mother_id);
+      const note = hasParents
+        ? '<p class="hint">They\'ll share ' + esc(firstName(p.full_name)) + "'s parents.</p>"
+        : '<p class="hint">Siblings are linked by shared parents. ' + esc(firstName(p.full_name)) +
+          " has no parents recorded yet, so this sibling will appear as a separate entry until you add their shared parents (use “Add a parent” on either of them).</p>";
+      openModal("Add a sibling of " + esc(p.full_name),
+        '<form id="f">' + note + personFields({}) +
+        '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p></form>');
+      const f = document.getElementById("f");
+      f.onsubmit = (e) => {
+        e.preventDefault();
+        submitForm("add", null, { father_id: p.father_id || "", mother_id: p.mother_id || "" }, f, document.getElementById("m"));
       };
     }
     function openAddSpouse(p) {

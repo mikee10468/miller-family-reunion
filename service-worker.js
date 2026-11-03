@@ -1,6 +1,6 @@
 /* Miller Family PWA service worker — offline app shell.
    Bump CACHE version whenever you change cached files. */
-const CACHE = "miller-family-v11";
+const CACHE = "miller-family-v12";
 const ASSETS = [
   "./",
   "./index.html",
