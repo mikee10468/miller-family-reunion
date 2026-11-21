@@ -534,10 +534,10 @@
       });
     }
 
-    // dropdown of people who may be a parent of `p` (everyone except p and p's
-    // own descendants, to avoid loops), current value preselected.
-    function parentSelect(name, label, currentId, p) {
-      const banned = descendantsOf(p.id); banned[p.id] = 1;
+    // dropdown of people who may be a parent; `banned` is a set of ids to omit
+    // (used to keep the edit form loop-free), current value preselected.
+    function parentSelect(name, label, currentId, banned) {
+      banned = banned || {};
       const opts = ['<option value="">— none —</option>'].concat(
         PERSONS.filter((x) => !banned[x.id])
           .slice().sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""))
@@ -547,10 +547,11 @@
       return '<label class="field"><span>' + label + "</span><select name=\"" + name + "\">" + opts.join("") + "</select></label>";
     }
     function openEdit(p) {
+      const banned = descendantsOf(p.id); banned[p.id] = 1;
       const parents =
         '<p class="hint" style="margin:.4rem 0 -.2rem">Parents — set or change who this person belongs to (auto-filled with everyone on the tree):</p>' +
-        parentSelect("father_id", "Father", p.father_id || "", p) +
-        parentSelect("mother_id", "Mother", p.mother_id || "", p);
+        parentSelect("father_id", "Father", p.father_id || "", banned) +
+        parentSelect("mother_id", "Mother", p.mother_id || "", banned);
       openModal("Suggest an edit", '<form id="f">' + personFields(p) + parents +
         '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p></form>');
       const f = document.getElementById("f");
@@ -558,29 +559,25 @@
     }
     function openAddChild(p, presetCoId) {
       if (!p) return;
-      const spouses = unionsFor(p.id).filter((u) => u.partnerId);
-      const coLabel = p.gender === "female" ? "father" : "mother";
-      const opts = ['<option value="">— other ' + coLabel + " not on the tree / unknown —</option>"]
-        .concat(spouses.map((u) => {
-          const sp = BYID[u.partnerId];
-          const tag = u.status && u.status !== "married" ? " (" + (u.status === "divorced" ? "ex" : esc(u.status)) + ")" : "";
-          return '<option value="' + u.partnerId + '"' + (presetCoId === u.partnerId ? " selected" : "") + ">" + esc(sp.full_name) + tag + "</option>";
-        }));
-      const picker = '<label class="field"><span>Other parent (the child’s ' + coLabel + ")</span>" +
-        '<select name="coparent">' + opts.join("") + "</select></label>" +
-        '<p class="hint">Pick which spouse this child belongs to so they land under the right branch. Not listed? Close this, use <b>“Add a spouse / ex”</b> first, then add the child.</p>';
-      openModal("Add a child of " + esc(p.full_name), '<form id="f">' + picker + personFields({}) +
+      // Auto-fill: the person you tapped goes in their gender's slot; their
+      // current spouse (or the preset co-parent) fills the other slot.
+      let fatherDefault = "", motherDefault = "";
+      if (p.gender === "female") motherDefault = p.id; else fatherDefault = p.id;
+      const kp = primarySpouse(p.id);
+      const otherId = presetCoId || (kp ? kp.id : "");
+      const o = otherId ? BYID[otherId] : null;
+      if (o) {
+        if (o.gender === "male") { if (!fatherDefault) fatherDefault = o.id; else if (!motherDefault) motherDefault = o.id; }
+        else { if (!motherDefault) motherDefault = o.id; else if (!fatherDefault) fatherDefault = o.id; }
+      }
+      const parents =
+        '<p class="hint" style="margin:.4rem 0 -.2rem">Parents (auto-filled — change either if needed; leave “none” if a parent isn’t on the tree):</p>' +
+        parentSelect("father_id", "Father", fatherDefault, {}) +
+        parentSelect("mother_id", "Mother", motherDefault, {});
+      openModal("Add a child of " + esc(p.full_name), '<form id="f">' + personFields({}) + parents +
         '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p></form>');
       const f = document.getElementById("f");
-      f.onsubmit = (e) => {
-        e.preventDefault();
-        let father_id = "", mother_id = "";
-        const put = (per) => { if (!per) return; if (per.gender === "female") mother_id = per.id; else father_id = per.id; };
-        put(p);
-        const other = f.coparent.value;
-        if (other && BYID[other]) put(BYID[other]);
-        submitForm("add", null, { father_id, mother_id }, f, document.getElementById("m"));
-      };
+      f.onsubmit = (e) => { e.preventDefault(); submitForm("add", null, {}, f, document.getElementById("m")); };
     }
     function openAddParent(p) {
       openModal("Add a parent of " + esc(p.full_name),
