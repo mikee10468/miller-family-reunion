@@ -386,8 +386,8 @@
       prefill = prefill || {};
       const g = prefill.gender || "";
       return '<label class="field"><span>Full name</span><input name="full_name" value="' + esc(prefill.full_name || "") + '" required /></label>' +
-        '<label class="field"><span>Birth date (MM/DD/YYYY)</span><input name="birth_date_str" inputmode="numeric" value="' + esc(MillerDB.fmtDate(prefill.birth_year, prefill.birth_month, prefill.birth_day)) + '" placeholder="e.g. 04/16/1975" /></label>' +
-        '<label class="field"><span>Death date (MM/DD/YYYY — or just a year if the day & month are unknown)</span><input name="death_date_str" inputmode="numeric" value="' + esc(MillerDB.fmtDate(prefill.death_year, prefill.death_month, prefill.death_day)) + '" placeholder="(if applicable)" /></label>' +
+        '<label class="field"><span>Birth date (DD/MM/YYYY)</span><input name="birth_date_str" inputmode="numeric" value="' + esc(MillerDB.fmtDate(prefill.birth_year, prefill.birth_month, prefill.birth_day)) + '" placeholder="e.g. 16/04/1975" /></label>' +
+        '<label class="field"><span>Death date (DD/MM/YYYY — or just a year if the day & month are unknown)</span><input name="death_date_str" inputmode="numeric" value="' + esc(MillerDB.fmtDate(prefill.death_year, prefill.death_month, prefill.death_day)) + '" placeholder="(if applicable)" /></label>' +
         '<label class="field"><span>Maiden name (optional)</span><input name="maiden_name" value="' + esc(prefill.maiden_name || "") + '" /></label>' +
         '<label class="field"><span>Gender</span><select name="gender">' +
           ['','male','female','other'].map(o => '<option value="' + o + '"' + (g === o ? " selected" : "") + ">" + (o || "—") + "</option>").join("") +
