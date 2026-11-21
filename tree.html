@@ -76,12 +76,11 @@
     .pill .node__name { font-size:.8rem; color:var(--purple-800); }
     .pill .node__photo { width:22px; height:22px; }
 
-    /* ---- Multiple spouses / exes: each spouse is its own branch ---- */
-    .union + .union { margin-top:.5rem; border-top:1px dashed #e0cff2; padding-top:.5rem; }
-    .union__spouse { text-align:center; margin:.1rem 0 .45rem; }
-    .union__spouse .node__name { font-size:.82rem; color:var(--purple-800); font-weight:600; }
-    .spouseline { list-style:none; margin:.15rem 0 .35rem; }
-    .spouseline .node__name { color:var(--purple-800); font-weight:600; }
+    /* ---- Spouses / exes: current spouse sits next to the person; other ---- */
+    /* ---- parents are noted on each child via .momtag ------------------- */
+    .momtag { font-family:"Cinzel",serif; font-size:.6rem; letter-spacing:.03em; text-transform:uppercase;
+      color:#8a6a00; margin-bottom:.05rem; line-height:1.1; }
+    .col__head .momtag { color:var(--gold-soft); }
     .badge { display:inline-block; font-family:"Cinzel",serif; font-size:.58rem; letter-spacing:.04em; text-transform:uppercase;
       background:#efe0c4; color:#7a5a12; border:1px solid #d9c08a; border-radius:999px; padding:.03rem .4rem; vertical-align:middle; margin-left:.15rem; }
     .ribbon .badge { background:#3a2a00; color:var(--gold-soft); border-color:#b9892a; }
@@ -238,7 +237,7 @@
     function descendantCount(id, seen) {
       seen = seen || {}; if (seen[id]) return 0; seen[id] = 1;
       let n = 0;
-      unionsFor(id).forEach((g) => g.kids.forEach((k) => { n += 1 + descendantCount(k.id, seen); }));
+      (CHILDREN[id] || []).forEach((k) => { n += 1 + descendantCount(k.id, seen); });
       return n;
     }
 
@@ -248,56 +247,56 @@
       return '<button class="addkid" data-p="' + parentId + '" data-co="' + (coId || "") + '">＋ add child</button>';
     }
 
-    // a person's descendants, grouped by spouse/co-parent, each spouse its own branch
-    function unionsBlock(personId) {
-      const groups = unionsFor(personId);
-      let html = "";
-      groups.forEach((g) => {
-        const sp = g.partnerId ? BYID[g.partnerId] : null;
-        if (sp) rendered[sp.id] = 1;
-        html += '<ul class="desc">';
-        if (sp) html += '<li class="spouseline"><span class="amp">♥</span> ' + personNode(sp, "pill") + statusBadge(g.status) + "</li>";
-        g.kids.forEach((k) => {
-          rendered[k.id] = 1;
-          html += "<li>" + personNode(k, "pill") + unionsBlock(k.id) + "</li>";
-        });
-        const btn = addKidBtn(personId, sp ? sp.id : "");
-        if (btn) html += '<li class="addkidli">' + btn + "</li>";
-        html += "</ul>";
+    // The current / final spouse — the one shown NEXT TO the person (not exes).
+    // Exes and other co-parents are not "the spouse"; they're noted on each child.
+    function primarySpouse(id) {
+      const list = (PARTNERS_OF[id] || []).filter((pr) => BYID[pr.id] && pr.status !== "divorced");
+      if (!list.length) return null;
+      const rank = { married: 0, partner: 1, widowed: 2 };
+      list.sort((a, b) => (rank[a.status] == null ? 5 : rank[a.status]) - (rank[b.status] == null ? 5 : rank[b.status]));
+      return list[0];
+    }
+    // "mother: X" / "father: X" noted by a child, when that parent is NOT the
+    // person's current spouse (i.e. the child is from another relationship).
+    function momLabel(child, parentId, primaryId) {
+      const o = otherParent(child, parentId);
+      if (!o || o === primaryId || !BYID[o]) return "";
+      const role = BYID[parentId] && BYID[parentId].gender === "female" ? "father" : "mother";
+      return '<div class="momtag">' + role + ": " + esc(BYID[o].full_name) + "</div>";
+    }
+    // All of a person's children (every relationship), oldest first, each tagged
+    // with the other parent when it differs from the person's current spouse.
+    function kidsList(parentId) {
+      const kids = (CHILDREN[parentId] || []).slice().sort((a, b) => (a.birth_year || 9999) - (b.birth_year || 9999));
+      if (!kids.length) return "";
+      const kp = primarySpouse(parentId); const primaryId = kp ? kp.id : null;
+      let html = '<ul class="desc">';
+      kids.forEach((k) => {
+        rendered[k.id] = 1;
+        const skp = primarySpouse(k.id); const sp = skp ? BYID[skp.id] : null; if (sp) rendered[sp.id] = 1;
+        html += "<li>" + momLabel(k, parentId, primaryId) + personNode(k, "pill") +
+          (sp ? ' <span class="amp" style="font-size:.75rem">♥</span> ' + personNode(sp, "pill") + statusBadge(skp.status) : "") +
+          kidsList(k.id) + "</li>";
       });
-      return html;
+      const btn = addKidBtn(parentId, primaryId || "");
+      if (btn) html += '<li class="addkidli">' + btn + "</li>";
+      return html + "</ul>";
     }
 
-    function columnFor(childId) {
+    function columnFor(childId, parentId, parentPrimaryId) {
       const child = BYID[childId];
       rendered[childId] = 1;
-      const groups = unionsFor(childId);
-      const totalKids = groups.reduce((s, g) => s + g.kids.length, 0);
-      let body = "";
-      if (!groups.length || (!totalKids && !groups.some((g) => g.partnerId))) {
-        body = '<div class="col__empty">— no children recorded —</div>' +
-          (CAN_EDIT ? '<div class="addkidli">' + addKidBtn(childId, "") + "</div>" : "");
-      } else {
-        groups.forEach((g) => {
-          const sp = g.partnerId ? BYID[g.partnerId] : null;
-          if (sp) rendered[sp.id] = 1;
-          body += '<div class="union">';
-          if (sp) body += '<div class="union__spouse"><span class="amp">♥</span> ' + personNode(sp, "pill") + statusBadge(g.status) + "</div>";
-          if (g.kids.length) {
-            body += '<ul class="desc">';
-            g.kids.forEach((k) => { rendered[k.id] = 1; body += "<li>" + personNode(k, "pill") + unionsBlock(k.id) + "</li>"; });
-            body += "</ul>";
-          } else if (sp) {
-            body += '<div class="col__empty">— no children recorded —</div>';
-          }
-          const btn = addKidBtn(childId, sp ? sp.id : "");
-          if (btn) body += '<div class="addkidli">' + btn + "</div>";
-          body += "</div>";
-        });
-      }
+      const kp = primarySpouse(childId); const spouse = kp ? BYID[kp.id] : null; if (spouse) rendered[spouse.id] = 1;
+      const kids = CHILDREN[childId] || [];
+      let body = kids.length ? kidsList(childId) : '<div class="col__empty">— no children recorded —</div>';
+      if (CAN_EDIT && !kids.length) body += '<div class="addkidli">' + addKidBtn(childId, kp ? kp.id : "") + "</div>";
       return '<div class="col">' +
-        '<div class="col__head">' + personNode(child, "heart") + "</div>" +
-        '<div class="col__body"><div class="col__title">' + esc(firstName(child.full_name)) + "'s family</div>" +
+        '<div class="col__head">' +
+          (typeof parentId !== "undefined" ? momLabel(child, parentId, parentPrimaryId) : "") +
+          personNode(child, "heart") +
+          (spouse ? '<div class="col__spouse"><span class="amp">♥</span> ' + personNode(spouse, "pill") + statusBadge(kp.status) + "</div>" : "") +
+        "</div>" +
+        '<div class="col__body"><div class="col__title">' + esc(firstName(child.full_name)) + "'s children</div>" +
           body +
         "</div></div>";
     }
@@ -312,24 +311,19 @@
     function familyBlock(rootId) {
       rendered[rootId] = 1;
       const root = BYID[rootId];
-      const groups = unionsFor(rootId);
-      let html = '<div class="family">';
-      if (!groups.length) return html + coupleRibbon(rootId, null, null) + "</div>";
-      groups.forEach((g) => {
-        const sp = g.partnerId ? BYID[g.partnerId] : null;
-        if (sp) rendered[sp.id] = 1;
-        html += coupleRibbon(rootId, g.partnerId, g.status);
-        if (g.kids.length) {
-          const label = sp
-            ? esc(firstName(root.full_name)) + " &amp; " + esc(firstName(sp.full_name)) + "’s " + g.kids.length + (g.kids.length === 1 ? " child" : " children")
-            : "Their " + g.kids.length + (g.kids.length === 1 ? " child" : " children");
-          html += '<div class="subbanner"><span>' + label + "</span></div>";
-          html += g.kids.length > 3 ? '<div class="scrollhint">← swipe sideways to see all ' + g.kids.length + " →</div>" : "";
-          html += '<div class="cols">' + g.kids.map((k) => columnFor(k.id)).join("") + "</div>";
-        } else if (sp && CAN_EDIT) {
-          html += '<div class="subbanner"><span>' + addKidBtn(rootId, sp.id) + "</span></div>";
-        }
-      });
+      const kp = primarySpouse(rootId); const spouse = kp ? BYID[kp.id] : null; if (spouse) rendered[spouse.id] = 1;
+      const primaryId = kp ? kp.id : null;
+      const kids = (CHILDREN[rootId] || []).slice().sort((a, b) => (a.birth_year || 9999) - (b.birth_year || 9999));
+      let html = '<div class="family">' + coupleRibbon(rootId, primaryId, kp ? kp.status : null);
+      if (kids.length) {
+        html += '<div class="subbanner"><span>' + (spouse
+          ? esc(firstName(root.full_name)) + " &amp; " + esc(firstName(spouse.full_name)) + "’s " + kids.length + (kids.length === 1 ? " child" : " children")
+          : "Their " + kids.length + (kids.length === 1 ? " child" : " children")) + "</span></div>";
+        html += kids.length > 3 ? '<div class="scrollhint">← swipe sideways to see all ' + kids.length + " →</div>" : "";
+        html += '<div class="cols">' + kids.map((k) => columnFor(k.id, rootId, primaryId)).join("") + "</div>";
+      } else if (spouse && CAN_EDIT) {
+        html += '<div class="subbanner"><span>' + addKidBtn(rootId, spouse.id) + "</span></div>";
+      }
       return html + "</div>";
     }
 
@@ -350,9 +344,9 @@
       elders.forEach((r) => {
         if (rendered[r.id]) return;
         rendered[r.id] = 1;
-        const g0 = unionsFor(r.id)[0];
-        const pid = g0 ? g0.partnerId : null; if (pid) rendered[pid] = 1;
-        blocks += '<div class="family">' + coupleRibbon(r.id, pid, g0 ? g0.status : null) + "</div>";
+        const kp = primarySpouse(r.id);
+        const pid = kp ? kp.id : null; if (pid) rendered[pid] = 1;
+        blocks += '<div class="family">' + coupleRibbon(r.id, pid, kp ? kp.status : null) + "</div>";
       });
       // then the founding families (most descendants first)
       withKids.forEach((r) => { if (!rendered[r.id]) blocks += familyBlock(r.id); });
@@ -406,8 +400,7 @@
     function openDetail(id) {
       const p = BYID[id];
       if (!p) return;
-      const unions = unionsFor(id);
-      const spouses = unions.filter((u) => u.partnerId);
+      const spouses = (PARTNERS_OF[id] || []).filter((u) => BYID[u.id]);
       const canEdit = ME.status === "active";
       const canRemove = ME.role === "admin" || ME.role === "elder";
       let body =
@@ -418,7 +411,7 @@
         parentLine(p) +
         (spouses.length
           ? '<div class="kv"><b>Spouse' + (spouses.length > 1 ? "s" : "") + ':</b> ' +
-            spouses.map((u) => esc(BYID[u.partnerId].full_name) +
+            spouses.map((u) => esc(BYID[u.id].full_name) +
               (u.status && u.status !== "married" ? " (" + (u.status === "divorced" ? "ex" : esc(u.status)) + ")" : "")).join(", ") + "</div>"
           : "") +
         (p.notes ? '<div class="kv"><b>Notes:</b> ' + esc(p.notes) + "</div>" : "");
