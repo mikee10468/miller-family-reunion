@@ -76,6 +76,21 @@
     .pill .node__name { font-size:.8rem; color:var(--purple-800); }
     .pill .node__photo { width:22px; height:22px; }
 
+    /* ---- Multiple spouses / exes: each spouse is its own branch ---- */
+    .union + .union { margin-top:.5rem; border-top:1px dashed #e0cff2; padding-top:.5rem; }
+    .union__spouse { text-align:center; margin:.1rem 0 .45rem; }
+    .union__spouse .node__name { font-size:.82rem; color:var(--purple-800); font-weight:600; }
+    .spouseline { list-style:none; margin:.15rem 0 .35rem; }
+    .spouseline .node__name { color:var(--purple-800); font-weight:600; }
+    .badge { display:inline-block; font-family:"Cinzel",serif; font-size:.58rem; letter-spacing:.04em; text-transform:uppercase;
+      background:#efe0c4; color:#7a5a12; border:1px solid #d9c08a; border-radius:999px; padding:.03rem .4rem; vertical-align:middle; margin-left:.15rem; }
+    .ribbon .badge { background:#3a2a00; color:var(--gold-soft); border-color:#b9892a; }
+    .addkidli { list-style:none; margin:.3rem 0 .1rem; text-align:center; }
+    .addkid { font:inherit; font-family:"Cinzel",serif; font-size:.68rem; letter-spacing:.03em; cursor:pointer;
+      background:#fff; color:var(--purple-600); border:1px dashed var(--purple-600); border-radius:999px; padding:.12rem .6rem; }
+    .addkid:hover { background:var(--purple-600); color:#fff; }
+    .subbanner .addkid { font-size:.72rem; }
+
     /* ---- Modal ---- */
     .modal { position:fixed; inset:0; background:rgba(20,4,36,.6); display:flex; align-items:center; justify-content:center; z-index:60; padding:1rem; }
     .sheet { background:#fff; border-radius:18px; width:100%; max-width:440px; max-height:88vh; overflow:auto; box-shadow:var(--shadow); }
@@ -119,7 +134,8 @@
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 
     let ME = null;
-    let PERSONS = [], BYID = {}, PARTNER = {}, CHILDREN = {}, PHOTO = {};
+    let PERSONS = [], BYID = {}, PARTNERS_OF = {}, CHILDREN = {}, PHOTO = {};
+    let CAN_EDIT = false;
 
     async function loadPhotos() {
       PHOTO = {};
@@ -145,26 +161,57 @@
       });
     }
     function applyPartners(partners) {
-      partners.forEach(pr => { PARTNER[pr.person_a] = pr.person_b; PARTNER[pr.person_b] = pr.person_a; });
+      PARTNERS_OF = {};
+      (partners || []).forEach(pr => {
+        (PARTNERS_OF[pr.person_a] = PARTNERS_OF[pr.person_a] || []).push({ id: pr.person_b, status: pr.status });
+        (PARTNERS_OF[pr.person_b] = PARTNERS_OF[pr.person_b] || []).push({ id: pr.person_a, status: pr.status });
+      });
     }
-    // two people who share a child are treated as a couple even without an explicit partner row
-    function coParent(id) {
-      const kids = CHILDREN[id] || [];
-      for (const k of kids) {
-        const other = k.father_id === id ? k.mother_id : (k.mother_id === id ? k.father_id : null);
-        if (other && BYID[other]) return other;
-      }
+    // the OTHER parent of a child, given one parent
+    function otherParent(child, id) {
+      if (child.father_id === id) return child.mother_id || null;
+      if (child.mother_id === id) return child.father_id || null;
       return null;
     }
-    function effectivePartner(id) {
-      if (PARTNER[id] && BYID[PARTNER[id]]) return PARTNER[id];
-      return coParent(id);
+    // All of a person's unions — one per spouse/ex AND per co-parent of a child —
+    // each carrying that union's children. This is what lets one parent have
+    // several mothers/fathers for their kids, grouped under each spouse.
+    function unionsFor(id) {
+      const statusOf = {};
+      (PARTNERS_OF[id] || []).forEach(pr => { if (!(pr.id in statusOf)) statusOf[pr.id] = pr.status; });
+      const byOther = {};
+      (CHILDREN[id] || []).forEach(k => {
+        const o = otherParent(k, id) || "";
+        (byOther[o] = byOther[o] || []).push(k);
+      });
+      const groups = [], seen = {};
+      Object.keys(byOther).forEach(o => {
+        const kids = byOther[o].slice().sort((a, b) => (a.birth_year || 9999) - (b.birth_year || 9999));
+        groups.push({ partnerId: o || null, status: o ? (statusOf[o] || null) : null, kids });
+        if (o) seen[o] = 1;
+      });
+      // spouses / exes with no recorded children are still shown
+      (PARTNERS_OF[id] || []).forEach(pr => {
+        if (!seen[pr.id] && BYID[pr.id]) { groups.push({ partnerId: pr.id, status: pr.status, kids: [] }); seen[pr.id] = 1; }
+      });
+      // unions that produced children first (oldest child first), childless unions after
+      groups.sort((a, b) => {
+        if (!a.kids.length && !b.kids.length) return 0;
+        if (!a.kids.length) return 1;
+        if (!b.kids.length) return -1;
+        return (a.kids[0].birth_year || 9999) - (b.kids[0].birth_year || 9999);
+      });
+      return groups;
     }
-    function unionChildren(aId, bId) {
-      const seen = {}, out = [];
-      [aId, bId].filter(Boolean).forEach(pid => (CHILDREN[pid] || []).forEach(c => { if (!seen[c.id]) { seen[c.id] = 1; out.push(c); } }));
-      out.sort((x, y) => (x.birth_year || 9999) - (y.birth_year || 9999));
-      return out;
+    function effectivePartner(id) {
+      const g = unionsFor(id);
+      for (const u of g) if (u.partnerId) return u.partnerId;
+      return null;
+    }
+    function statusBadge(status) {
+      if (!status || status === "married") return "";
+      const label = status === "divorced" ? "ex" : (status === "widowed" ? "✝ widowed" : esc(status));
+      return ' <span class="badge">' + label + "</span>";
     }
 
     const rendered = {};
@@ -190,62 +237,105 @@
 
     function descendantCount(id, seen) {
       seen = seen || {}; if (seen[id]) return 0; seen[id] = 1;
-      const kids = unionChildren(id, effectivePartner(id));
-      let n = kids.length;
-      kids.forEach((k) => { n += descendantCount(k.id, seen); });
+      let n = 0;
+      unionsFor(id).forEach((g) => g.kids.forEach((k) => { n += 1 + descendantCount(k.id, seen); }));
       return n;
     }
 
-    // nested list of a person's descendants (used inside a child's column)
-    function descListFrom(kids) {
-      let html = '<ul class="desc">';
-      kids.forEach((k) => {
-        rendered[k.id] = 1;
-        const pid = effectivePartner(k.id); const sp = pid ? BYID[pid] : null; if (sp) rendered[pid] = 1;
-        const gk = unionChildren(k.id, pid);
-        html += "<li>" + personNode(k, "pill") +
-          (sp ? ' <span class="amp" style="font-size:.75rem">♥</span> ' + personNode(sp, "pill") : "") +
-          (gk.length ? descListFrom(gk) : "") + "</li>";
+    // "＋ add child" affordance on a branch (active members only)
+    function addKidBtn(parentId, coId) {
+      if (!CAN_EDIT) return "";
+      return '<button class="addkid" data-p="' + parentId + '" data-co="' + (coId || "") + '">＋ add child</button>';
+    }
+
+    // a person's descendants, grouped by spouse/co-parent, each spouse its own branch
+    function unionsBlock(personId) {
+      const groups = unionsFor(personId);
+      let html = "";
+      groups.forEach((g) => {
+        const sp = g.partnerId ? BYID[g.partnerId] : null;
+        if (sp) rendered[sp.id] = 1;
+        html += '<ul class="desc">';
+        if (sp) html += '<li class="spouseline"><span class="amp">♥</span> ' + personNode(sp, "pill") + statusBadge(g.status) + "</li>";
+        g.kids.forEach((k) => {
+          rendered[k.id] = 1;
+          html += "<li>" + personNode(k, "pill") + unionsBlock(k.id) + "</li>";
+        });
+        const btn = addKidBtn(personId, sp ? sp.id : "");
+        if (btn) html += '<li class="addkidli">' + btn + "</li>";
+        html += "</ul>";
       });
-      return html + "</ul>";
+      return html;
     }
 
     function columnFor(childId) {
       const child = BYID[childId];
       rendered[childId] = 1;
-      const pid = effectivePartner(childId); const spouse = pid ? BYID[pid] : null; if (spouse) rendered[pid] = 1;
-      const kids = unionChildren(childId, pid);
+      const groups = unionsFor(childId);
+      const totalKids = groups.reduce((s, g) => s + g.kids.length, 0);
+      let body = "";
+      if (!groups.length || (!totalKids && !groups.some((g) => g.partnerId))) {
+        body = '<div class="col__empty">— no children recorded —</div>' +
+          (CAN_EDIT ? '<div class="addkidli">' + addKidBtn(childId, "") + "</div>" : "");
+      } else {
+        groups.forEach((g) => {
+          const sp = g.partnerId ? BYID[g.partnerId] : null;
+          if (sp) rendered[sp.id] = 1;
+          body += '<div class="union">';
+          if (sp) body += '<div class="union__spouse"><span class="amp">♥</span> ' + personNode(sp, "pill") + statusBadge(g.status) + "</div>";
+          if (g.kids.length) {
+            body += '<ul class="desc">';
+            g.kids.forEach((k) => { rendered[k.id] = 1; body += "<li>" + personNode(k, "pill") + unionsBlock(k.id) + "</li>"; });
+            body += "</ul>";
+          } else if (sp) {
+            body += '<div class="col__empty">— no children recorded —</div>';
+          }
+          const btn = addKidBtn(childId, sp ? sp.id : "");
+          if (btn) body += '<div class="addkidli">' + btn + "</div>";
+          body += "</div>";
+        });
+      }
       return '<div class="col">' +
-        '<div class="col__head">' + personNode(child, "heart") +
-          (spouse ? '<div class="col__spouse"><span class="amp">♥</span> ' + personNode(spouse, "pill") + "</div>" : "") +
-        "</div>" +
-        '<div class="col__body"><div class="col__title">' + esc(firstName(child.full_name)) + "'s children</div>" +
-          (kids.length ? descListFrom(kids) : '<div class="col__empty">— no children recorded —</div>') +
+        '<div class="col__head">' + personNode(child, "heart") + "</div>" +
+        '<div class="col__body"><div class="col__title">' + esc(firstName(child.full_name)) + "'s family</div>" +
+          body +
         "</div></div>";
     }
 
-    function coupleRibbon(aId) {
-      let a = BYID[aId]; const pid = effectivePartner(aId); let b = pid ? BYID[pid] : null;
+    function coupleRibbon(aId, bId, status) {
+      let a = BYID[aId]; let b = bId && BYID[bId] ? BYID[bId] : null;
       if (b && a.gender === "female" && b.gender === "male") { const t = a; a = b; b = t; } // husband first, like the poster
       return '<div class="ribbon">' + personNode(a, "ribbon") +
-        (b ? '<span class="amp">♥</span>' + personNode(b, "ribbon") : "") + "</div>";
+        (b ? '<span class="amp">♥</span>' + personNode(b, "ribbon") + statusBadge(status) : "") + "</div>";
     }
 
     function familyBlock(rootId) {
       rendered[rootId] = 1;
-      const pid = effectivePartner(rootId); if (pid) rendered[pid] = 1;
-      const kids = unionChildren(rootId, pid);
-      let html = '<div class="family">' + coupleRibbon(rootId);
-      if (kids.length) {
-        html += '<div class="subbanner"><span>Their ' + kids.length + (kids.length === 1 ? " child" : " children") + "</span></div>";
-        html += kids.length > 3 ? '<div class="scrollhint">← swipe sideways to see all ' + kids.length + " →</div>" : "";
-        html += '<div class="cols">' + kids.map((k) => columnFor(k.id)).join("") + "</div>";
-      }
+      const root = BYID[rootId];
+      const groups = unionsFor(rootId);
+      let html = '<div class="family">';
+      if (!groups.length) return html + coupleRibbon(rootId, null, null) + "</div>";
+      groups.forEach((g) => {
+        const sp = g.partnerId ? BYID[g.partnerId] : null;
+        if (sp) rendered[sp.id] = 1;
+        html += coupleRibbon(rootId, g.partnerId, g.status);
+        if (g.kids.length) {
+          const label = sp
+            ? esc(firstName(root.full_name)) + " &amp; " + esc(firstName(sp.full_name)) + "’s " + g.kids.length + (g.kids.length === 1 ? " child" : " children")
+            : "Their " + g.kids.length + (g.kids.length === 1 ? " child" : " children");
+          html += '<div class="subbanner"><span>' + label + "</span></div>";
+          html += g.kids.length > 3 ? '<div class="scrollhint">← swipe sideways to see all ' + g.kids.length + " →</div>" : "";
+          html += '<div class="cols">' + g.kids.map((k) => columnFor(k.id)).join("") + "</div>";
+        } else if (sp && CAN_EDIT) {
+          html += '<div class="subbanner"><span>' + addKidBtn(rootId, sp.id) + "</span></div>";
+        }
+      });
       return html + "</div>";
     }
 
     function renderTree() {
       for (const k in rendered) delete rendered[k];
+      CAN_EDIT = ME.status === "active";
       let roots = PERSONS.filter((p) => !p.father_id && !p.mother_id).filter((p) => {
         const pid = effectivePartner(p.id);
         if (!pid || !BYID[pid]) return true;
@@ -259,8 +349,10 @@
       // standalone elders (e.g., Levi) go on TOP
       elders.forEach((r) => {
         if (rendered[r.id]) return;
-        rendered[r.id] = 1; const pid = effectivePartner(r.id); if (pid) rendered[pid] = 1;
-        blocks += '<div class="family">' + coupleRibbon(r.id) + "</div>";
+        rendered[r.id] = 1;
+        const g0 = unionsFor(r.id)[0];
+        const pid = g0 ? g0.partnerId : null; if (pid) rendered[pid] = 1;
+        blocks += '<div class="family">' + coupleRibbon(r.id, pid, g0 ? g0.status : null) + "</div>";
       });
       // then the founding families (most descendants first)
       withKids.forEach((r) => { if (!rendered[r.id]) blocks += familyBlock(r.id); });
@@ -287,6 +379,8 @@
 
     /* ---------- interactions ---------- */
     app.addEventListener("click", (e) => {
+      const add = e.target.closest(".addkid");
+      if (add) { e.preventDefault(); return openAddChild(BYID[add.dataset.p], add.dataset.co || ""); }
       const n = e.target.closest(".node");
       if (n) openDetail(n.dataset.id);
     });
@@ -312,7 +406,8 @@
     function openDetail(id) {
       const p = BYID[id];
       if (!p) return;
-      const partnerId = effectivePartner(id);
+      const unions = unionsFor(id);
+      const spouses = unions.filter((u) => u.partnerId);
       const canEdit = ME.status === "active";
       const canRemove = ME.role === "admin" || ME.role === "elder";
       let body =
@@ -321,7 +416,11 @@
         '<div class="kv"><b>Status:</b> ' + (p.is_living === false ? "In loving memory ✝" : "Living") + "</div>" +
         (p.maiden_name ? '<div class="kv"><b>Maiden name:</b> ' + esc(p.maiden_name) + "</div>" : "") +
         parentLine(p) +
-        (partnerId ? '<div class="kv"><b>Spouse:</b> ' + esc(BYID[partnerId].full_name) + "</div>" : "") +
+        (spouses.length
+          ? '<div class="kv"><b>Spouse' + (spouses.length > 1 ? "s" : "") + ':</b> ' +
+            spouses.map((u) => esc(BYID[u.partnerId].full_name) +
+              (u.status && u.status !== "married" ? " (" + (u.status === "divorced" ? "ex" : esc(u.status)) + ")" : "")).join(", ") + "</div>"
+          : "") +
         (p.notes ? '<div class="kv"><b>Notes:</b> ' + esc(p.notes) + "</div>" : "");
       if (canEdit) {
         body += '<hr style="border:0;border-top:1px solid #eee;margin:1rem 0" />' +
@@ -329,7 +428,7 @@
           '<button class="btn btn--sm btn--outline" data-act="child">Add a child</button>' +
           '<button class="btn btn--sm btn--outline" data-act="parent">Add a parent</button>' +
           '<button class="btn btn--sm btn--outline" data-act="sibling">Add a sibling</button>' +
-          (partnerId ? "" : '<button class="btn btn--sm btn--outline" data-act="spouse">Add a spouse</button>') +
+          '<button class="btn btn--sm btn--outline" data-act="spouse">Add a spouse / ex</button>' +
           '<p class="hint" style="margin-top:.6rem">Changes are reviewed by a family elder before they appear.</p>';
       }
       if (canRemove) {
@@ -340,10 +439,10 @@
       openModal(esc(p.full_name), body);
       if (canEdit) {
         modalRoot.querySelector('[data-act="edit"]').onclick = () => openEdit(p);
-        modalRoot.querySelector('[data-act="child"]').onclick = () => openAddChild(p, partnerId);
+        modalRoot.querySelector('[data-act="child"]').onclick = () => openAddChild(p, "");
         modalRoot.querySelector('[data-act="parent"]').onclick = () => openAddParent(p);
         modalRoot.querySelector('[data-act="sibling"]').onclick = () => openAddSibling(p);
-        const sp = modalRoot.querySelector('[data-act="spouse"]'); if (sp) sp.onclick = () => openAddSpouse(p);
+        modalRoot.querySelector('[data-act="spouse"]').onclick = () => openAddSpouse(p);
       }
       if (canRemove) {
         modalRoot.querySelector('[data-act="remove"]').onclick = () => openRemove(p);
@@ -351,7 +450,7 @@
     }
 
     function openRemove(p) {
-      const kids = unionChildren(p.id, effectivePartner(p.id));
+      const kids = CHILDREN[p.id] || [];
       const warn = kids.length
         ? "<p class='hint'>" + esc(firstName(p.full_name)) + " has <b>" + kids.length +
           (kids.length === 1 ? " child" : " children") + "</b> recorded. They will stay on the tree but will no longer show " +
@@ -432,17 +531,31 @@
       const f = document.getElementById("f");
       f.onsubmit = (e) => { e.preventDefault(); submitForm("edit", p.id, {}, f, document.getElementById("m")); };
     }
-    function openAddChild(p, partnerId) {
-      // assign parents by gender
-      const partner = partnerId ? BYID[partnerId] : null;
-      let father_id = "", mother_id = "";
-      const assign = (per) => { if (!per) return; if (per.gender === "female") mother_id = per.id; else father_id = per.id; };
-      assign(p); assign(partner);
-      const who = partner ? (esc(p.full_name) + " & " + esc(partner.full_name)) : esc(p.full_name);
-      openModal("Add a child of " + who, '<form id="f">' + personFields({}) +
+    function openAddChild(p, presetCoId) {
+      if (!p) return;
+      const spouses = unionsFor(p.id).filter((u) => u.partnerId);
+      const coLabel = p.gender === "female" ? "father" : "mother";
+      const opts = ['<option value="">— other ' + coLabel + " not on the tree / unknown —</option>"]
+        .concat(spouses.map((u) => {
+          const sp = BYID[u.partnerId];
+          const tag = u.status && u.status !== "married" ? " (" + (u.status === "divorced" ? "ex" : esc(u.status)) + ")" : "";
+          return '<option value="' + u.partnerId + '"' + (presetCoId === u.partnerId ? " selected" : "") + ">" + esc(sp.full_name) + tag + "</option>";
+        }));
+      const picker = '<label class="field"><span>Other parent (the child’s ' + coLabel + ")</span>" +
+        '<select name="coparent">' + opts.join("") + "</select></label>" +
+        '<p class="hint">Pick which spouse this child belongs to so they land under the right branch. Not listed? Close this, use <b>“Add a spouse / ex”</b> first, then add the child.</p>';
+      openModal("Add a child of " + esc(p.full_name), '<form id="f">' + picker + personFields({}) +
         '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p></form>');
       const f = document.getElementById("f");
-      f.onsubmit = (e) => { e.preventDefault(); submitForm("add", null, { father_id, mother_id }, f, document.getElementById("m")); };
+      f.onsubmit = (e) => {
+        e.preventDefault();
+        let father_id = "", mother_id = "";
+        const put = (per) => { if (!per) return; if (per.gender === "female") mother_id = per.id; else father_id = per.id; };
+        put(p);
+        const other = f.coparent.value;
+        if (other && BYID[other]) put(BYID[other]);
+        submitForm("add", null, { father_id, mother_id }, f, document.getElementById("m"));
+      };
     }
     function openAddParent(p) {
       openModal("Add a parent of " + esc(p.full_name),
@@ -474,10 +587,16 @@
       };
     }
     function openAddSpouse(p) {
-      openModal("Add " + esc(p.full_name) + "'s spouse", '<form id="f">' + personFields({}) +
+      const statusField = '<label class="field"><span>Relationship</span><select name="partner_status">' +
+        '<option value="married">Married</option>' +
+        '<option value="partner">Partner</option>' +
+        '<option value="divorced">Ex (divorced / separated)</option>' +
+        '<option value="widowed">Widowed</option>' +
+        "</select></label>";
+      openModal("Add " + esc(p.full_name) + "’s spouse / ex", '<form id="f">' + statusField + personFields({}) +
         '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p></form>');
       const f = document.getElementById("f");
-      f.onsubmit = (e) => { e.preventDefault(); submitForm("add", null, { partner_id: p.id }, f, document.getElementById("m")); };
+      f.onsubmit = (e) => { e.preventDefault(); submitForm("add", null, { partner_id: p.id, partner_status: f.partner_status.value }, f, document.getElementById("m")); };
     }
 
     /* ---------- init ---------- */
