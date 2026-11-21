@@ -240,6 +240,17 @@
       (CHILDREN[id] || []).forEach((k) => { n += 1 + descendantCount(k.id, seen); });
       return n;
     }
+    // set of all descendant ids of `id` (used to keep parent dropdowns loop-free)
+    function descendantsOf(id) {
+      const out = {}, stack = (CHILDREN[id] || []).slice();
+      while (stack.length) {
+        const k = stack.pop();
+        if (out[k.id]) continue;
+        out[k.id] = 1;
+        (CHILDREN[k.id] || []).forEach((c) => stack.push(c));
+      }
+      return out;
+    }
 
     // "＋ add child" affordance on a branch (active members only)
     function addKidBtn(parentId, coId) {
@@ -266,7 +277,8 @@
     }
     // All of a person's children (every relationship), oldest first, each tagged
     // with the other parent when it differs from the person's current spouse.
-    function kidsList(parentId) {
+    function kidsList(parentId, seen) {
+      seen = seen || {}; if (seen[parentId]) return ""; seen[parentId] = 1; // guard against bad parent loops
       const kids = (CHILDREN[parentId] || []).slice().sort((a, b) => (a.birth_year || 9999) - (b.birth_year || 9999));
       if (!kids.length) return "";
       const kp = primarySpouse(parentId); const primaryId = kp ? kp.id : null;
@@ -276,7 +288,7 @@
         const skp = primarySpouse(k.id); const sp = skp ? BYID[skp.id] : null; if (sp) rendered[sp.id] = 1;
         html += "<li>" + momLabel(k, parentId, primaryId) + personNode(k, "pill") +
           (sp ? ' <span class="amp" style="font-size:.75rem">♥</span> ' + personNode(sp, "pill") + statusBadge(skp.status) : "") +
-          kidsList(k.id) + "</li>";
+          kidsList(k.id, seen) + "</li>";
       });
       const btn = addKidBtn(parentId, primaryId || "");
       if (btn) html += '<li class="addkidli">' + btn + "</li>";
@@ -501,6 +513,10 @@
       out.__dateError = b.error || dd.error || null;
       if (b.year)  { out.birth_year = b.year; out.birth_month = b.month || ""; out.birth_day = b.day || ""; }
       if (dd.year) { out.death_year = dd.year; out.death_month = dd.month || ""; out.death_day = dd.day || ""; }
+      // Parent dropdowns (edit form): pass through even when blank so a parent
+      // can be set, changed, or cleared. submitForm adds set_parents so the
+      // backend treats these as authoritative (see approve_submission).
+      ["father_id","mother_id"].forEach(k => { if (d[k] !== undefined) out[k] = d[k]; });
       return out;
     }
 
@@ -518,11 +534,27 @@
       });
     }
 
+    // dropdown of people who may be a parent of `p` (everyone except p and p's
+    // own descendants, to avoid loops), current value preselected.
+    function parentSelect(name, label, currentId, p) {
+      const banned = descendantsOf(p.id); banned[p.id] = 1;
+      const opts = ['<option value="">— none —</option>'].concat(
+        PERSONS.filter((x) => !banned[x.id])
+          .slice().sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""))
+          .map((x) => '<option value="' + x.id + '"' + (currentId === x.id ? " selected" : "") + ">" +
+            esc(x.full_name) + (x.birth_year ? " (b. " + x.birth_year + ")" : "") + "</option>")
+      );
+      return '<label class="field"><span>' + label + "</span><select name=\"" + name + "\">" + opts.join("") + "</select></label>";
+    }
     function openEdit(p) {
-      openModal("Suggest an edit", '<form id="f">' + personFields(p) +
+      const parents =
+        '<p class="hint" style="margin:.4rem 0 -.2rem">Parents — set or change who this person belongs to (auto-filled with everyone on the tree):</p>' +
+        parentSelect("father_id", "Father", p.father_id || "", p) +
+        parentSelect("mother_id", "Mother", p.mother_id || "", p);
+      openModal("Suggest an edit", '<form id="f">' + personFields(p) + parents +
         '<button class="btn btn--gold" type="submit">Submit for review</button><p class="msg" id="m"></p></form>');
       const f = document.getElementById("f");
-      f.onsubmit = (e) => { e.preventDefault(); submitForm("edit", p.id, {}, f, document.getElementById("m")); };
+      f.onsubmit = (e) => { e.preventDefault(); submitForm("edit", p.id, { set_parents: "1" }, f, document.getElementById("m")); };
     }
     function openAddChild(p, presetCoId) {
       if (!p) return;
