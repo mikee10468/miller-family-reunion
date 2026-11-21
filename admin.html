@@ -167,6 +167,7 @@
     function renderMembers(members) {
       if (!members.length) return '<p class="empty">No members yet.</p>';
       const canRole = ME.role === "admin";
+      const treePersons = Object.values(PERSON_BYID).sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
       return '<div class="list">' + members.map((m) =>
         '<div class="row">' +
           "<h3>" + esc(m.full_name || m.email) +
@@ -183,6 +184,10 @@
               "</select>" +
             (canRole ? ' <button class="btn btn--sm btn--outline" data-setpw="' + m.id + '" data-email="' + esc(m.email) + '" data-name="' + esc(m.full_name || "") + '">Set / reset password</button>' : "") +
           "</div>" +
+          (canRole ? '<div class="actions" style="margin-top:.4rem">Tree link: <select data-person="' + m.id + '">' +
+            '<option value="">— not on tree (can\'t post) —</option>' +
+            treePersons.map((p) => '<option value="' + p.id + '"' + (m.person_id === p.id ? " selected" : "") + ">" + esc(p.full_name) + (p.birth_year ? " (b. " + p.birth_year + ")" : "") + "</option>").join("") +
+            "</select></div>" : "") +
           '<div class="pw-out"></div>' +
         "</div>"
       ).join("") + "</div>";
@@ -306,6 +311,13 @@
         sel.addEventListener("change", async () => {
           const { error } = await MillerDB.setStatus(sel.dataset.status, sel.value);
           if (error) alert("Could not change status.");
+        }));
+      wrap.querySelectorAll("[data-person]").forEach((sel) =>
+        sel.addEventListener("change", async () => {
+          const { error } = await MillerDB.setMemberPerson(sel.dataset.person, sel.value || null);
+          if (error) alert(/unique|duplicate/i.test(error.message)
+            ? "That tree person is already linked to another member."
+            : "Could not update tree link: " + error.message);
         }));
 
       const saveS = document.getElementById("save-settings");

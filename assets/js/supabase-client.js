@@ -239,6 +239,90 @@
       const session = await this.getSession();
       return client.from("volunteer_signups").delete().eq("role_id", roleId).eq("member_id", session.user.id);
     },
+
+    /* ---- Tree link: which tree person a member IS ---- */
+    // A member claims their own node on the tree (enables posting).
+    async setMyPerson(personId) {
+      const session = await this.getSession();
+      return client.from("profiles").update({ person_id: personId || null }).eq("id", session.user.id);
+    },
+    // Admin override: link any member to a tree person.
+    async setMemberPerson(userId, personId) {
+      return client.from("profiles").update({ person_id: personId || null }).eq("id", userId);
+    },
+
+    /* ---- Message board: posts + polymorphic comments ---- */
+    async listPosts() {
+      return client.from("posts").select("*").order("created_at", { ascending: false });
+    },
+    async createPost(body) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      if (!profile || !profile.person_id) return { error: { message: "You must be linked to the family tree to post." } };
+      return client.from("posts").insert({
+        author_id: session.user.id,
+        author_person_id: profile.person_id,
+        author_name: profile.full_name || profile.email || "A family member",
+        body,
+      });
+    },
+    async deletePost(id) {
+      return client.from("posts").delete().eq("id", id);
+    },
+    // All comments for a given target type (e.g. 'post'); group client-side.
+    async listComments(targetType) {
+      return client.from("comments").select("*").eq("target_type", targetType).order("created_at", { ascending: true });
+    },
+    async addComment({ targetType, targetId, body }) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      if (!profile || !profile.person_id) return { error: { message: "You must be linked to the family tree to comment." } };
+      return client.from("comments").insert({
+        target_type: targetType,
+        target_id: targetId,
+        author_id: session.user.id,
+        author_person_id: profile.person_id,
+        author_name: profile.full_name || profile.email || "A family member",
+        body,
+      });
+    },
+    async deleteComment(id) {
+      return client.from("comments").delete().eq("id", id);
+    },
+
+    /* ---- Chat: family group chat + reviewer-only direct chats ---- */
+    async getFamilyConversation() {
+      const { data } = await client.from("conversations").select("*").eq("kind", "family").limit(1).maybeSingle();
+      return data || null;
+    },
+    // Conversations the signed-in user can see (family + their own direct chats).
+    async listConversations() {
+      return client.from("conversations").select("*").order("created_at", { ascending: true });
+    },
+    async listConversationMembers() {
+      return client.from("conversation_members").select("*");
+    },
+    async startDirectConversation(otherUserId) {
+      return client.rpc("start_direct_conversation", { p_other: otherUserId });
+    },
+    async listMessages(conversationId, sinceIso) {
+      let q = client.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true });
+      if (sinceIso) q = q.gt("created_at", sinceIso);
+      return q;
+    },
+    async sendMessage(conversationId, body) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      return client.from("messages").insert({
+        conversation_id: conversationId,
+        author_id: session.user.id,
+        author_name: (profile && (profile.full_name || profile.email)) || "A family member",
+        body,
+      });
+    },
+    async deleteMessage(id) {
+      return client.from("messages").delete().eq("id", id);
+    },
   };
 
   function randomCode() {

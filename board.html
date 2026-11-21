@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Messages · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    body { background: linear-gradient(180deg, #faf5ef, #f1e8f7); min-height:100vh; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      background: linear-gradient(160deg, var(--purple-900), var(--purple-600)); color:#fff;
+      padding: calc(env(safe-area-inset-top,0px) + .9rem) 1rem .9rem; position:sticky; top:env(safe-area-inset-top,0px); z-index:20; }
+    .topbar .script { font-family:"Great Vibes",cursive; color:var(--gold); font-size:1.7rem; line-height:1; }
+    .topbar .sub { font-family:"Cinzel",serif; font-size:.7rem; letter-spacing:.1em; color:#e9dcff; }
+    .topbar a.home { color:var(--gold-soft); text-decoration:none; font-family:"Cinzel",serif; font-size:.85rem; }
+    .wrap { max-width:720px; margin:0 auto; padding:1.2rem 1rem calc(3rem + env(safe-area-inset-bottom,0px)); }
+    .card { background:#fff; border-radius:16px; box-shadow:var(--shadow); border:1px solid rgba(109,40,168,.12); padding:1.1rem 1.2rem; margin-bottom:1.1rem; }
+    .card h2 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .2rem; font-size:1.15rem; }
+    .lede { color:#6b5b7a; margin:.1rem 0 .9rem; font-size:.92rem; }
+    textarea, input, select { width:100%; padding:.6rem .8rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; box-sizing:border-box; }
+    textarea { resize:vertical; min-height:3.2em; }
+    .msg { min-height:1.1em; font-family:"Cinzel",serif; margin-top:.4rem; font-size:.85rem; } .msg.ok{color:#1b6b1b;} .msg.err{color:#b11;}
+    .post { background:#fff; border-radius:16px; box-shadow:var(--shadow); border:1px solid rgba(109,40,168,.12); padding:1rem 1.1rem; margin-bottom:1.1rem; }
+    .phead { display:flex; align-items:center; gap:.6rem; }
+    .av { width:38px; height:38px; border-radius:50%; flex:0 0 38px; display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(160deg,var(--purple-600),var(--purple-900)); color:var(--gold-soft,#f3e2b3); font-family:"Cinzel",serif; font-size:.9rem; }
+    .pwho { font-family:"Cinzel",serif; color:var(--purple-800); font-size:.98rem; }
+    .pwhen { color:#9385a3; font-size:.74rem; }
+    .pbody { margin:.6rem 0 .2rem; white-space:pre-wrap; line-height:1.5; color:#2e2435; }
+    .del { background:transparent; border:0; color:#a33; cursor:pointer; font:inherit; font-size:.76rem; margin-left:auto; }
+    .comments { margin-top:.7rem; border-top:1px dashed rgba(109,40,168,.18); padding-top:.5rem; }
+    .cmt { display:flex; gap:.5rem; padding:.4rem 0; }
+    .cmt .cav { width:28px; height:28px; border-radius:50%; flex:0 0 28px; display:flex; align-items:center; justify-content:center;
+      background:#efe6f7; color:#5a1e8c; font-family:"Cinzel",serif; font-size:.72rem; }
+    .cmt .cbody { flex:1; font-size:.9rem; color:#33283c; white-space:pre-wrap; line-height:1.45; }
+    .cmt .cwho { font-family:"Cinzel",serif; color:var(--purple-700,#5a1e8c); font-size:.82rem; }
+    .cmt .cwhen { color:#9385a3; font-size:.7rem; margin-left:.4rem; }
+    .cmt .cdel { background:transparent; border:0; color:#a33; cursor:pointer; font-size:.72rem; }
+    .cbar { display:flex; gap:.5rem; margin-top:.5rem; }
+    .cbar input { flex:1; }
+    .empty { color:#6b5b7a; font-style:italic; font-size:.9rem; text-align:center; padding:1.5rem 0; }
+    .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
+    .btn--sm { padding:.45rem .9rem; font-size:.85rem; }
+    .notice { background:#fff7e6; border:1px solid var(--gold,#caa24a); border-radius:12px; padding:.9rem 1rem; color:#5a4a14; font-size:.9rem; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div><div class="script">Family Messages</div><div class="sub">THE MILLER FAMILY</div></div>
+    <div><a class="home" href="tree.html">🌳 Tree</a> &nbsp; <a class="home" href="chat.html">💬 Chat</a> &nbsp; <a class="home" href="login.html">Account</a></div>
+  </div>
+
+  <div class="wrap" id="wrap"><div class="state"><p>Loading…</p></div></div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script>
+    const wrap = document.getElementById("wrap");
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    let ME = null, PERSONS = [];
+
+    function initials(name) {
+      const parts = String(name || "?").trim().split(/\s+/);
+      return ((parts[0] || "")[0] || "?").toUpperCase() + (parts.length > 1 ? (parts[parts.length - 1][0] || "").toUpperCase() : "");
+    }
+    function when(iso) {
+      const d = new Date(iso), now = new Date();
+      const sameDay = d.toDateString() === now.toDateString();
+      const t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return sameDay ? "Today " + t : d.toLocaleDateString([], { month: "short", day: "numeric" }) + ", " + t;
+    }
+    const canPost = () => !!(ME && ME.person_id);
+
+    function composer() {
+      if (!canPost()) return claimCard();
+      return '<div class="card"><h2>Share with the family</h2>' +
+        '<p class="lede">Post a message, update, or memory for everyone to see.</p>' +
+        '<textarea id="pbody" maxlength="4000" placeholder="What would you like to say?"></textarea>' +
+        '<div style="text-align:right;margin-top:.6rem"><button class="btn btn--gold btn--sm" id="postbtn">Post</button></div>' +
+        '<p class="msg" id="pmsg"></p></div>';
+    }
+
+    function claimCard() {
+      const opts = PERSONS.map((p) => '<option value="' + p.id + '">' + esc(p.full_name) + (p.birth_year ? " (b. " + p.birth_year + ")" : "") + "</option>").join("");
+      return '<div class="card"><h2>First, find yourself on the tree 🌳</h2>' +
+        '<div class="notice" style="margin-bottom:.9rem">Only family members on the tree can post messages and comments. ' +
+        'Pick who you are below to connect your account to the family tree.</div>' +
+        '<select id="claimsel"><option value="">— Select your name —</option>' + opts + "</select>" +
+        '<div style="text-align:right;margin-top:.7rem"><button class="btn btn--gold btn--sm" id="claimbtn">This is me</button></div>' +
+        '<p class="lede" style="margin:.6rem 0 0">Don\'t see yourself? Ask an elder to add you to the tree first.</p>' +
+        '<p class="msg" id="claimmsg"></p></div>';
+    }
+
+    function postEl(p, comments) {
+      const cs = comments.filter((c) => c.target_id === p.id);
+      const mine = p.author_id === ME.id, rev = ME.role === "admin" || ME.role === "elder";
+      return '<div class="post" data-post="' + p.id + '">' +
+        '<div class="phead"><div class="av">' + esc(initials(p.author_name)) + "</div>" +
+          '<div><div class="pwho">' + esc(p.author_name || "A family member") + "</div>" +
+          '<div class="pwhen">' + esc(when(p.created_at)) + "</div></div>" +
+          (mine || rev ? '<button class="del" data-delpost="' + p.id + '">delete</button>' : "") +
+        "</div>" +
+        '<div class="pbody">' + esc(p.body) + "</div>" +
+        '<div class="comments">' +
+          cs.map((c) => {
+            const cmine = c.author_id === ME.id;
+            return '<div class="cmt"><div class="cav">' + esc(initials(c.author_name)) + "</div>" +
+              '<div class="cbody"><span class="cwho">' + esc(c.author_name || "Member") + "</span>" +
+              '<span class="cwhen">' + esc(when(c.created_at)) + "</span>" +
+              (cmine || rev ? ' <button class="cdel" data-delcmt="' + c.id + '">×</button>' : "") +
+              "<br>" + esc(c.body) + "</div></div>";
+          }).join("") +
+          (canPost()
+            ? '<div class="cbar"><input type="text" maxlength="2000" placeholder="Write a comment…" data-cinput="' + p.id + '" />' +
+              '<button class="btn btn--gold btn--sm" data-caddbtn="' + p.id + '">Reply</button></div>'
+            : "") +
+        "</div></div>";
+    }
+
+    async function render() {
+      const [postsRes, commentsRes] = await Promise.all([MillerDB.listPosts(), MillerDB.listComments("post")]);
+      const posts = postsRes.data || [], comments = commentsRes.data || [];
+      wrap.innerHTML = composer() +
+        (posts.length ? posts.map((p) => postEl(p, comments)).join("") : '<div class="empty">No messages yet — be the first to say hello! 💜</div>');
+      wire();
+    }
+
+    function wire() {
+      const claimbtn = document.getElementById("claimbtn");
+      if (claimbtn) claimbtn.addEventListener("click", async () => {
+        const sel = document.getElementById("claimsel"), m = document.getElementById("claimmsg");
+        if (!sel.value) { m.textContent = "Please pick your name."; m.className = "msg err"; return; }
+        m.textContent = "Connecting…"; m.className = "msg";
+        const { error } = await MillerDB.setMyPerson(sel.value);
+        if (error) {
+          m.textContent = /unique|duplicate/i.test(error.message) ? "That person is already linked to another account. Ask an elder for help." : ("Could not link: " + error.message);
+          m.className = "msg err"; return;
+        }
+        ME = await MillerDB.getProfile();
+        render();
+      });
+
+      const postbtn = document.getElementById("postbtn");
+      if (postbtn) postbtn.addEventListener("click", async () => {
+        const ta = document.getElementById("pbody"), m = document.getElementById("pmsg");
+        const body = ta.value.trim();
+        if (!body) { m.textContent = "Write something first."; m.className = "msg err"; return; }
+        postbtn.disabled = true; m.textContent = "Posting…"; m.className = "msg";
+        const { error } = await MillerDB.createPost(body);
+        postbtn.disabled = false;
+        if (error) { m.textContent = "Could not post: " + error.message; m.className = "msg err"; return; }
+        render();
+      });
+
+      wrap.querySelectorAll("[data-delpost]").forEach((b) => b.addEventListener("click", async () => {
+        if (!confirm("Delete this message?")) return;
+        await MillerDB.deletePost(b.dataset.delpost); render();
+      }));
+      wrap.querySelectorAll("[data-delcmt]").forEach((b) => b.addEventListener("click", async () => {
+        await MillerDB.deleteComment(b.dataset.delcmt); render();
+      }));
+      wrap.querySelectorAll("[data-caddbtn]").forEach((b) => b.addEventListener("click", async () => {
+        const id = b.dataset.caddbtn;
+        const input = wrap.querySelector('[data-cinput="' + id + '"]');
+        const body = input.value.trim();
+        if (!body) { input.focus(); return; }
+        b.disabled = true;
+        const { error } = await MillerDB.addComment({ targetType: "post", targetId: id, body });
+        b.disabled = false;
+        if (error) { alert("Could not comment: " + error.message); return; }
+        render();
+      }));
+      wrap.querySelectorAll("[data-cinput]").forEach((inp) => inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); const btn = wrap.querySelector('[data-caddbtn="' + inp.dataset.cinput + '"]'); if (btn) btn.click(); }
+      }));
+    }
+
+    (async function init() {
+      if (!MillerDB.configured) { wrap.innerHTML = '<div class="state"><h2>Not connected yet</h2><p><a href="index.html">Back to the family page</a></p></div>'; return; }
+      await new Promise((r) => setTimeout(r, 250));
+      const session = await MillerDB.getSession();
+      if (!session) { location.href = "login.html"; return; }
+      ME = await MillerDB.getProfile();
+      if (!ME) { wrap.innerHTML = '<div class="state"><p>Finishing sign-in… <a href="board.html">refresh</a>.</p></div>'; return; }
+      if (ME.status !== "active") {
+        wrap.innerHTML = '<div class="state"><h2>Almost there!</h2><p>Your access is pending approval. Once an elder approves you, the family messages will appear here.</p><p><a class="btn btn--gold" href="login.html">My Account</a></p></div>';
+        return;
+      }
+      const persons = await MillerDB.listPersons();
+      PERSONS = persons.data || [];
+      render();
+    })();
+  </script>
+</body>
+</html>

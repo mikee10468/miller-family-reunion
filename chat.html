@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Chat · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    body { background: linear-gradient(180deg, #faf5ef, #f1e8f7); min-height:100vh; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      background: linear-gradient(160deg, var(--purple-900), var(--purple-600)); color:#fff;
+      padding: calc(env(safe-area-inset-top,0px) + .9rem) 1rem .9rem; position:sticky; top:env(safe-area-inset-top,0px); z-index:20; }
+    .topbar .script { font-family:"Great Vibes",cursive; color:var(--gold); font-size:1.7rem; line-height:1; }
+    .topbar .sub { font-family:"Cinzel",serif; font-size:.7rem; letter-spacing:.1em; color:#e9dcff; }
+    .topbar a.home { color:var(--gold-soft); text-decoration:none; font-family:"Cinzel",serif; font-size:.85rem; }
+    .wrap { max-width:720px; margin:0 auto; padding:.9rem 1rem calc(1rem + env(safe-area-inset-bottom,0px)); }
+    .convbar { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-bottom:.8rem; }
+    .cchip { border:1px solid var(--purple-600); background:#fff; color:var(--purple-800); border-radius:999px;
+      padding:.4rem .9rem; font-family:"Cinzel",serif; font-size:.82rem; cursor:pointer; }
+    .cchip.on { background:var(--purple-600); color:#fff; }
+    .cchip.new { border-style:dashed; color:#5a1e8c; }
+    .panel { background:#fff; border-radius:16px; box-shadow:var(--shadow); border:1px solid rgba(109,40,168,.12); display:flex; flex-direction:column; height:68vh; min-height:360px; overflow:hidden; }
+    .ptitle { font-family:"Cinzel",serif; color:var(--purple-800); padding:.7rem 1rem; border-bottom:1px solid #f0eaf6; font-size:.98rem; }
+    .thread { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:.55rem; }
+    .m { max-width:78%; padding:.5rem .8rem; border-radius:14px; font-size:.92rem; line-height:1.4; white-space:pre-wrap; word-wrap:break-word; }
+    .m .who { font-family:"Cinzel",serif; font-size:.72rem; opacity:.8; display:block; margin-bottom:.1rem; }
+    .m .tm { font-size:.66rem; opacity:.6; margin-left:.4rem; }
+    .m.them { align-self:flex-start; background:#efe6f7; color:#2e2435; border-bottom-left-radius:4px; }
+    .m.me { align-self:flex-end; background:linear-gradient(160deg,var(--purple-600),var(--purple-900)); color:#fff; border-bottom-right-radius:4px; }
+    .m.me .who { color:var(--gold-soft,#f3e2b3); }
+    .mdel { background:transparent; border:0; color:inherit; opacity:.5; cursor:pointer; font-size:.7rem; margin-left:.3rem; }
+    .composer { display:flex; gap:.5rem; padding:.7rem; border-top:1px solid #f0eaf6; }
+    .composer input { flex:1; padding:.6rem .8rem; border-radius:999px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; }
+    .empty { color:#6b5b7a; font-style:italic; font-size:.9rem; text-align:center; margin:auto; }
+    .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
+    .btn--sm { padding:.5rem 1rem; font-size:.85rem; }
+    .dlg { position:fixed; inset:0; background:rgba(30,10,45,.5); display:flex; align-items:center; justify-content:center; z-index:50; padding:1rem; }
+    .dlg .box { background:#fff; border-radius:16px; padding:1.2rem; max-width:420px; width:100%; }
+    .dlg h3 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .7rem; }
+    .dlg select { width:100%; padding:.6rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); font:inherit; }
+    .dlg .actions { display:flex; gap:.6rem; justify-content:flex-end; margin-top:1rem; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div><div class="script">Family Chat</div><div class="sub">THE MILLER FAMILY</div></div>
+    <div><a class="home" href="board.html">📝 Messages</a> &nbsp; <a class="home" href="tree.html">🌳 Tree</a> &nbsp; <a class="home" href="login.html">Account</a></div>
+  </div>
+
+  <div class="wrap" id="wrap"><div class="state"><p>Loading…</p></div></div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script>
+    const wrap = document.getElementById("wrap");
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    let ME = null, CONVS = [], MEMBERS = [], ACTIVE = null, POLL = null;
+    const isReviewer = () => ME && (ME.role === "admin" || ME.role === "elder");
+
+    function when(iso) {
+      const d = new Date(iso), now = new Date();
+      const t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return d.toDateString() === now.toDateString() ? t : d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + t;
+    }
+    function convTitle(c) {
+      if (c.kind === "family") return "💬 Family Chat";
+      const others = MEMBERS.filter((m) => m.conversation_id === c.id && m.user_id !== ME.id);
+      return "🔒 " + (others.map((m) => m.member_name || "Member").join(", ") || "Direct chat");
+    }
+
+    function shell() {
+      const chips = CONVS.map((c) => '<button class="cchip ' + (ACTIVE === c.id ? "on" : "") + '" data-conv="' + c.id + '">' + esc(convTitle(c)) + "</button>").join("");
+      const newBtn = isReviewer() ? '<button class="cchip new" id="newdm">+ New direct message</button>' : "";
+      const active = CONVS.find((c) => c.id === ACTIVE);
+      return '<div class="convbar">' + chips + newBtn + "</div>" +
+        '<div class="panel"><div class="ptitle">' + (active ? esc(convTitle(active)) : "") + "</div>" +
+        '<div class="thread" id="thread"><div class="empty">Loading messages…</div></div>' +
+        '<div class="composer"><input id="minput" type="text" maxlength="4000" placeholder="Type a message…" autocomplete="off" />' +
+        '<button class="btn btn--gold btn--sm" id="sendbtn">Send</button></div></div>';
+    }
+
+    function renderMessages(msgs) {
+      const thread = document.getElementById("thread");
+      if (!thread) return;
+      const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
+      if (!msgs.length) { thread.innerHTML = '<div class="empty">No messages yet. Say hello! 👋</div>'; return; }
+      thread.innerHTML = msgs.map((m) => {
+        const mine = m.author_id === ME.id, canDel = mine || isReviewer();
+        return '<div class="m ' + (mine ? "me" : "them") + '">' +
+          (mine ? "" : '<span class="who">' + esc(m.author_name || "Member") + "</span>") +
+          esc(m.body) + '<span class="tm">' + esc(when(m.created_at)) +
+          (canDel ? ' <button class="mdel" data-delmsg="' + m.id + '">×</button>' : "") + "</span></div>";
+      }).join("");
+      thread.querySelectorAll("[data-delmsg]").forEach((b) => b.addEventListener("click", async (e) => {
+        e.stopPropagation(); await MillerDB.deleteMessage(b.dataset.delmsg); refresh();
+      }));
+      if (nearBottom) thread.scrollTop = thread.scrollHeight;
+    }
+
+    async function refresh() {
+      if (!ACTIVE) return;
+      const res = await MillerDB.listMessages(ACTIVE);
+      renderMessages(res.data || []);
+    }
+
+    function startPolling() {
+      if (POLL) clearInterval(POLL);
+      POLL = setInterval(() => { if (document.visibilityState === "visible") refresh(); }, 3500);
+    }
+
+    function wire() {
+      wrap.querySelectorAll("[data-conv]").forEach((b) => b.addEventListener("click", () => {
+        ACTIVE = b.dataset.conv; draw();
+      }));
+      const nd = document.getElementById("newdm");
+      if (nd) nd.addEventListener("click", openNewDM);
+      const send = document.getElementById("sendbtn"), input = document.getElementById("minput");
+      async function doSend() {
+        const body = input.value.trim();
+        if (!body || !ACTIVE) return;
+        input.value = ""; send.disabled = true;
+        const { error } = await MillerDB.sendMessage(ACTIVE, body);
+        send.disabled = false; input.focus();
+        if (error) { alert("Could not send: " + error.message); return; }
+        refresh();
+      }
+      if (send) send.addEventListener("click", doSend);
+      if (input) input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); doSend(); } });
+    }
+
+    function draw() {
+      wrap.innerHTML = shell();
+      wire();
+      refresh();
+      startPolling();
+    }
+
+    async function openNewDM() {
+      const opts = PROFILES.filter((p) => p.id !== ME.id && p.status === "active")
+        .map((p) => '<option value="' + p.id + '">' + esc(p.full_name || p.email) + " (" + esc(p.role) + ")</option>").join("");
+      const dlg = document.createElement("div");
+      dlg.className = "dlg";
+      dlg.innerHTML = '<div class="box"><h3>Start a direct message</h3>' +
+        '<p style="color:#6b5b7a;font-size:.88rem;margin:.1rem 0 .7rem">Private 1-on-1 chat. (Available to admins & elders for now.)</p>' +
+        '<select id="dmsel"><option value="">— Choose a family member —</option>' + opts + "</select>" +
+        '<div class="actions"><button class="btn btn--outline btn--sm" id="dmcancel">Cancel</button>' +
+        '<button class="btn btn--gold btn--sm" id="dmstart">Start chat</button></div></div>';
+      document.body.appendChild(dlg);
+      dlg.querySelector("#dmcancel").addEventListener("click", () => dlg.remove());
+      dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.remove(); });
+      dlg.querySelector("#dmstart").addEventListener("click", async () => {
+        const sel = dlg.querySelector("#dmsel");
+        if (!sel.value) return;
+        const btn = dlg.querySelector("#dmstart"); btn.disabled = true;
+        const { data, error } = await MillerDB.startDirectConversation(sel.value);
+        if (error) { btn.disabled = false; alert("Could not start chat: " + error.message); return; }
+        dlg.remove();
+        await loadConvs();
+        ACTIVE = data;
+        draw();
+      });
+    }
+
+    let PROFILES = [];
+    async function loadConvs() {
+      const [cRes, mRes] = await Promise.all([MillerDB.listConversations(), MillerDB.listConversationMembers()]);
+      CONVS = cRes.data || [];
+      MEMBERS = mRes.data || [];
+      // family first, then direct chats
+      CONVS.sort((a, b) => (a.kind === "family" ? -1 : b.kind === "family" ? 1 : 0));
+    }
+
+    (async function init() {
+      if (!MillerDB.configured) { wrap.innerHTML = '<div class="state"><h2>Not connected yet</h2><p><a href="index.html">Back to the family page</a></p></div>'; return; }
+      await new Promise((r) => setTimeout(r, 250));
+      const session = await MillerDB.getSession();
+      if (!session) { location.href = "login.html"; return; }
+      ME = await MillerDB.getProfile();
+      if (!ME) { wrap.innerHTML = '<div class="state"><p>Finishing sign-in… <a href="chat.html">refresh</a>.</p></div>'; return; }
+      if (ME.status !== "active") {
+        wrap.innerHTML = '<div class="state"><h2>Almost there!</h2><p>Your access is pending approval. Once an elder approves you, family chat will appear here.</p><p><a class="btn btn--gold" href="login.html">My Account</a></p></div>';
+        return;
+      }
+      await loadConvs();
+      if (isReviewer()) { const pr = await MillerDB.listProfiles(); PROFILES = pr.data || []; }
+      const fam = CONVS.find((c) => c.kind === "family");
+      ACTIVE = fam ? fam.id : (CONVS[0] && CONVS[0].id) || null;
+      if (!ACTIVE) { wrap.innerHTML = '<div class="state"><h2>Chat isn\'t set up yet</h2><p>The family chat hasn\'t been created. Please check back soon.</p></div>'; return; }
+      draw();
+    })();
+  </script>
+</body>
+</html>
