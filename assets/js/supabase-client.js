@@ -104,6 +104,29 @@
     async listPersons() {
       return client.from("persons").select("*").order("birth_year", { ascending: true, nullsFirst: true });
     },
+    // ---- Date helpers (birth/death stored as year + optional month/day ints) ----
+    // Full date -> MM/DD/YYYY; year-only -> YYYY; nothing -> "".
+    fmtDate(year, month, day) {
+      if (!year) return "";
+      if (month && day) {
+        const p2 = (n) => String(n).padStart(2, "0");
+        return p2(month) + "/" + p2(day) + "/" + year;
+      }
+      return String(year);
+    },
+    // Parse "MM/DD/YYYY" (or M/D/YYYY, - or . separators) or a 4-digit year.
+    // Returns {year, month, day} (month/day omitted for year-only) or {error}.
+    parseDateStr(str) {
+      const s = String(str == null ? "" : str).trim();
+      if (!s) return {};
+      if (/^\d{4}$/.test(s)) return { year: +s };
+      const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+      if (!m) return { error: "Use MM/DD/YYYY (e.g. 04/16/1975) or just a 4-digit year." };
+      const month = +m[1], day = +m[2], year = +m[3];
+      if (month < 1 || month > 12) return { error: "Month must be 01–12 (format MM/DD/YYYY)." };
+      if (day < 1 || day > 31) return { error: "Day must be 01–31 (format MM/DD/YYYY)." };
+      return { year, month, day };
+    },
     async listPartners() {
       return client.from("partners").select("*");
     },

@@ -128,9 +128,11 @@
     }
 
     function yearsLine(p) {
-      if (p.birth_year && p.death_year) return p.birth_year + "–" + p.death_year;
-      if (p.birth_year) return "b. " + p.birth_year;
-      if (p.death_year) return "d. " + p.death_year;
+      const b = MillerDB.fmtDate(p.birth_year, p.birth_month, p.birth_day);
+      const d = MillerDB.fmtDate(p.death_year, p.death_month, p.death_day);
+      if (b && d) return b + " – " + d;
+      if (b) return "b. " + b;
+      if (d) return "d. " + d;
       return "";
     }
 
@@ -384,8 +386,8 @@
       prefill = prefill || {};
       const g = prefill.gender || "";
       return '<label class="field"><span>Full name</span><input name="full_name" value="' + esc(prefill.full_name || "") + '" required /></label>' +
-        '<div class="field row2" style="margin:0"><label class="field"><span>Birth year</span><input name="birth_year" inputmode="numeric" value="' + esc(prefill.birth_year || "") + '" placeholder="e.g. 1965" /></label>' +
-        '<label class="field"><span>Death year</span><input name="death_year" inputmode="numeric" value="' + esc(prefill.death_year || "") + '" placeholder="(if applicable)" /></label></div>' +
+        '<label class="field"><span>Birth date (MM/DD/YYYY)</span><input name="birth_date_str" inputmode="numeric" value="' + esc(MillerDB.fmtDate(prefill.birth_year, prefill.birth_month, prefill.birth_day)) + '" placeholder="e.g. 04/16/1975" /></label>' +
+        '<label class="field"><span>Death date (MM/DD/YYYY — or just a year if the day & month are unknown)</span><input name="death_date_str" inputmode="numeric" value="' + esc(MillerDB.fmtDate(prefill.death_year, prefill.death_month, prefill.death_day)) + '" placeholder="(if applicable)" /></label>' +
         '<label class="field"><span>Maiden name (optional)</span><input name="maiden_name" value="' + esc(prefill.maiden_name || "") + '" /></label>' +
         '<label class="field"><span>Gender</span><select name="gender">' +
           ['','male','female','other'].map(o => '<option value="' + o + '"' + (g === o ? " selected" : "") + ">" + (o || "—") + "</option>").join("") +
@@ -399,13 +401,21 @@
       const d = Object.fromEntries(new FormData(form).entries());
       const out = {};
       ["full_name","maiden_name","gender","notes"].forEach(k => { if (d[k] !== undefined && d[k] !== "") out[k] = d[k].trim(); });
-      ["birth_year","death_year"].forEach(k => { if (d[k]) out[k] = String(d[k]).replace(/\D/g,""); });
       out.is_living = d.is_living === "false" ? false : true;
+      // Birth / death dates: MM/DD/YYYY (or year-only). Year drives the month/day
+      // keys so an edit that supplies a date fully controls them (see approve_submission).
+      const b = MillerDB.parseDateStr(d.birth_date_str);
+      const dd = MillerDB.parseDateStr(d.death_date_str);
+      out.__dateError = b.error || dd.error || null;
+      if (b.year)  { out.birth_year = b.year; out.birth_month = b.month || ""; out.birth_day = b.day || ""; }
+      if (dd.year) { out.death_year = dd.year; out.death_month = dd.month || ""; out.death_day = dd.day || ""; }
       return out;
     }
 
     function submitForm(kind, targetId, extra, form, msgEl) {
       const data = Object.assign(readForm(form), extra || {});
+      if (data.__dateError) { msgEl.textContent = data.__dateError; msgEl.className = "msg err"; return; }
+      delete data.__dateError;
       if (!data.full_name) { msgEl.textContent = "Please enter a name."; msgEl.className = "msg err"; return; }
       msgEl.textContent = "Submitting…"; msgEl.className = "msg";
       MillerDB.submitPerson({ kind, targetId, data }).then(({ error }) => {

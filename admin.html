@@ -115,7 +115,9 @@
       const d = s.data || {};
       const bits = [];
       if (d.full_name) bits.push("<b>" + esc(d.full_name) + "</b>");
-      const yrs = [d.birth_year, d.death_year].filter(Boolean).join("–");
+      const bd = MillerDB.fmtDate(d.birth_year, d.birth_month, d.birth_day);
+      const dd = MillerDB.fmtDate(d.death_year, d.death_month, d.death_day);
+      const yrs = [bd, dd].filter(Boolean).join(" – ");
       if (yrs) bits.push(esc(yrs));
       if (d.gender) bits.push(esc(d.gender));
       if (d.maiden_name) bits.push("née " + esc(d.maiden_name));
