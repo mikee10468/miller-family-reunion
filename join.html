@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Join · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    body { background: linear-gradient(180deg, #faf5ef, #f1e8f7); min-height:100vh; }
+    .hero { text-align:center; background:linear-gradient(160deg,var(--purple-900),var(--purple-600)); color:#fff;
+      padding: calc(env(safe-area-inset-top,0px) + 1.6rem) 1rem 1.6rem; }
+    .hero .script { font-family:"Great Vibes",cursive; color:var(--gold); font-size:2.4rem; line-height:1; }
+    .hero .sub { font-family:"Cinzel",serif; font-size:.78rem; letter-spacing:.12em; color:#e9dcff; margin-top:.3rem; }
+    .wrap { max-width:640px; margin:0 auto; padding:1.3rem 1rem calc(3rem + env(safe-area-inset-bottom,0px)); }
+    .card { background:#fff; border-radius:16px; box-shadow:var(--shadow); border:1px solid rgba(109,40,168,.12); padding:1.3rem; margin-bottom:1.3rem; }
+    .card h2 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .3rem; font-size:1.25rem; }
+    .card h3 { font-family:"Cinzel",serif; color:var(--purple-700,#5a1e8c); font-size:1rem; margin:1rem 0 .3rem; }
+    .lede { color:#6b5b7a; margin:.1rem 0 1rem; font-size:.95rem; line-height:1.5; }
+    .field { display:block; margin:.7rem 0; }
+    .field span { font-family:"Cinzel",serif; font-size:.8rem; display:block; margin-bottom:.3rem; color:var(--purple-800); }
+    .field input { width:100%; padding:.65rem .8rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; box-sizing:border-box; }
+    .msg { min-height:1.2em; font-family:"Cinzel",serif; margin-top:.6rem; font-size:.9rem; } .msg.ok{color:#1b6b1b;} .msg.err{color:#b11;}
+    ol, ul { margin:.3rem 0 .6rem 1.1rem; padding:0; }
+    ol li, ul li { margin:.4rem 0; line-height:1.5; color:#352b40; font-size:.93rem; }
+    .tabs { display:flex; gap:.4rem; flex-wrap:wrap; margin:.4rem 0 .8rem; }
+    .tabs button { border:1px solid var(--purple-600); background:#fff; color:var(--purple-800); border-radius:999px;
+      padding:.4rem .9rem; font-family:"Cinzel",serif; font-size:.82rem; cursor:pointer; }
+    .tabs button.on { background:var(--purple-600); color:#fff; }
+    .panel { display:none; } .panel.on { display:block; }
+    .kbd { background:#efe6f7; color:#5a1e8c; border-radius:6px; padding:.05rem .4rem; font-size:.85em; font-family:ui-monospace,Consolas,monospace; }
+    .note { background:#fff7e6; border:1px solid var(--gold,#caa24a); border-radius:12px; padding:.7rem .9rem; color:#5a4a14; font-size:.88rem; line-height:1.45; }
+    .success { background:#edf9ed; border:1px solid #9ccf9c; border-radius:14px; padding:1.1rem 1.2rem; color:#1b5e20; }
+    .success h2 { color:#1b5e20; }
+    .steps-min { color:#6b5b7a; font-size:.82rem; margin-top:.2rem; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="script">The Miller Family</div>
+    <div class="sub">HONORING OUR PAST · CELEBRATING OUR PRESENT · BUILDING OUR FUTURE</div>
+  </div>
+
+  <div class="wrap">
+    <div id="signup">
+      <div class="card">
+        <h2>You're invited! 💜</h2>
+        <p class="lede">Welcome to the Miller family hub — our family tree, photos, reunion plans, messages, and chat, all in one place.
+          Create your free account below using the invite code you were sent. It only takes a minute.</p>
+        <div class="note" id="codenote">Enter the invite code from your text message to get started. Guest codes are valid for 7 days.</div>
+        <label class="field"><span>Your full name</span><input id="f-name" type="text" autocomplete="name" placeholder="e.g. Jordan Miller" /></label>
+        <label class="field"><span>Email address</span><input id="f-email" type="email" autocomplete="email" placeholder="you@example.com" /></label>
+        <label class="field"><span>Create a password (at least 8 characters)</span><input id="f-pass" type="password" autocomplete="new-password" minlength="8" /></label>
+        <label class="field"><span>Confirm password</span><input id="f-pass2" type="password" autocomplete="new-password" minlength="8" /></label>
+        <label class="field"><span>Invite code</span><input id="f-code" type="text" placeholder="MILLER-XXXX" style="text-transform:uppercase" /></label>
+        <button class="btn btn--gold btn--block" id="createbtn">Create my account</button>
+        <p class="msg" id="msg"></p>
+        <p class="steps-min">Already have an account? <a href="login.html">Sign in here</a>.</p>
+      </div>
+    </div>
+
+    <div id="welcome" style="display:none">
+      <div class="card success">
+        <h2>🎉 You're all set!</h2>
+        <p class="lede" style="color:#2e5e2e">Your account is created and you're signed in. An elder will give it a quick review.
+          Here's everything you need to start using the app — and how to add the app to your phone or computer.</p>
+        <a class="btn btn--gold btn--block" href="tree.html">Open the app →</a>
+      </div>
+    </div>
+
+    <!-- ================= INSTRUCTIONS (always visible) ================= -->
+    <div class="card">
+      <h2>🌐 How to open the app</h2>
+      <ol>
+        <li>Open your web browser and go to: <br><span class="kbd" id="siteurl">the family app link</span></li>
+        <li>Tap <b>Sign In</b>.</li>
+        <li>Enter the <b>email</b> and <b>password</b> you just created and tap <b>Sign In</b>.</li>
+      </ol>
+      <p class="lede" style="margin:.4rem 0 0">Tip: bookmark the page, or better — install it as an app (below) so it opens like any other app with its own icon.</p>
+    </div>
+
+    <div class="card">
+      <h2>📲 Install the app on your device</h2>
+      <p class="lede">Installing adds a Miller Family icon to your home screen or desktop. Choose your device:</p>
+      <div class="tabs" id="devtabs">
+        <button data-dev="ios" class="on">🍏 iPhone / iPad</button>
+        <button data-dev="android">🤖 Android</button>
+        <button data-dev="pc">💻 Computer</button>
+      </div>
+
+      <div class="panel on" data-panel="ios">
+        <h3>iPhone &amp; iPad</h3>
+        <ol>
+          <li>Open the family app link in <b>Safari</b> (this must be Safari — not Chrome — on iPhone/iPad).</li>
+          <li>Tap the <b>Share</b> button — the square with an up arrow <span class="kbd">⬆️</span>, at the bottom of the screen (or top on iPad).</li>
+          <li>Scroll down the list and tap <b>Add to Home Screen</b>.</li>
+          <li>Tap <b>Add</b> in the top-right corner.</li>
+          <li>Find the new <b>Miller Family</b> icon on your home screen and tap to open it anytime.</li>
+        </ol>
+      </div>
+
+      <div class="panel" data-panel="android">
+        <h3>Android phones &amp; tablets</h3>
+        <ol>
+          <li>Open the family app link in <b>Chrome</b>.</li>
+          <li>Tap the <b>⋮</b> menu (three dots) in the top-right corner.</li>
+          <li>Tap <b>Install app</b> (or <b>Add to Home screen</b>).</li>
+          <li>Tap <b>Install</b> / <b>Add</b> to confirm.</li>
+          <li>The <b>Miller Family</b> icon appears in your app drawer / home screen.</li>
+        </ol>
+        <p class="steps-min">If Chrome shows a pop-up banner that says “Install,” you can just tap that.</p>
+      </div>
+
+      <div class="panel" data-panel="pc">
+        <h3>Windows PC &amp; Mac</h3>
+        <p class="lede" style="margin:.2rem 0 .5rem"><b>Using Chrome or Microsoft Edge:</b></p>
+        <ol>
+          <li>Open the family app link in <b>Chrome</b> or <b>Edge</b>.</li>
+          <li>Look at the right end of the address bar for the <b>Install</b> icon — a small monitor/screen with a down-arrow <span class="kbd">⤓</span>. Click it.</li>
+          <li>(No icon? Click the <b>⋮</b> menu in Chrome → <b>Cast, save and share</b> → <b>Install page as app</b>; in Edge click <b>⋯</b> → <b>Apps</b> → <b>Install this site as an app</b>.)</li>
+          <li>Click <b>Install</b>. The app opens in its own window and is added to your Start menu (Windows) or Launchpad/Dock (Mac).</li>
+        </ol>
+        <p class="steps-min"><b>Mac Safari (macOS Sonoma or newer):</b> open the link, then choose <b>File → Add to Dock</b>.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🌳 How to add or update the family tree</h2>
+      <p class="lede">Everyone helps build the tree. Your additions are reviewed by a family elder before they go live, so don't worry about making a mistake.</p>
+      <ol>
+        <li>Open the app and tap <b>🌳 Tree</b> (also on your account page after you sign in).</li>
+        <li>The first time, the app asks you to <b>find yourself on the tree</b> — pick your name so your posts and additions are tied to you. (Don't see yourself? Add yourself using the steps below, or ask an elder.)</li>
+        <li>Tap any person's card to open it. You'll see options to <b>Add child</b>, <b>Add parent</b>, <b>Add a sibling</b>, or <b>Add spouse</b>, plus <b>Suggest an edit</b> to fix a name, date, or detail.</li>
+        <li>Fill in what you know (name, birth year, etc.) and submit. You'll see “submitted for review.”</li>
+        <li>A family elder approves it, and then it appears on the tree for everyone. 🎉</li>
+      </ol>
+      <p class="note">You can also add <b>photos</b>, <b>RSVP for the reunion</b>, post <b>family messages</b>, and join the <b>family chat</b> — all from the buttons on your account page.</p>
+    </div>
+
+    <p class="steps-min" style="text-align:center">Questions? Reply to the text from the family member who invited you.</p>
+  </div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
+
+    // Show the real site link + prefill the code from the invite link.
+    (function setup() {
+      const site = (window.MILLER_CONFIG && window.MILLER_CONFIG.siteUrl) || location.origin;
+      $("siteurl").textContent = site;
+      const c = params.get("code");
+      if (c) { $("f-code").value = c.trim().toUpperCase(); }
+    })();
+
+    // Device tabs
+    document.querySelectorAll("#devtabs button").forEach((b) => b.addEventListener("click", () => {
+      document.querySelectorAll("#devtabs button").forEach((x) => x.classList.toggle("on", x === b));
+      document.querySelectorAll("[data-panel]").forEach((p) => p.classList.toggle("on", p.dataset.panel === b.dataset.dev));
+    }));
+
+    const ERRORS = {
+      code_required: "Please enter your invite code.",
+      invalid_code: "That invite code isn't valid. Please double-check it with the person who sent it.",
+      revoked: "This invite code has been turned off. Please ask the family for a new one.",
+      expired: "This invite code has expired. Please ask the family to text you a new one.",
+      email_invalid: "Please enter a valid email address.",
+      password_short: "Your password must be at least 8 characters.",
+      name_required: "Please enter your name.",
+      email_exists: "That email already has an account. Please use Sign In instead.",
+    };
+
+    $("createbtn").addEventListener("click", async () => {
+      const msg = $("msg");
+      if (!MillerDB.configured) { msg.textContent = "The app isn't connected yet. Please try again later."; msg.className = "msg err"; return; }
+      const full_name = $("f-name").value.trim();
+      const email = $("f-email").value.trim();
+      const password = $("f-pass").value;
+      const password2 = $("f-pass2").value;
+      const code = $("f-code").value.trim();
+      if (!full_name) { msg.textContent = ERRORS.name_required; msg.className = "msg err"; return; }
+      if (!/^\S+@\S+\.\S+$/.test(email)) { msg.textContent = ERRORS.email_invalid; msg.className = "msg err"; return; }
+      if (password.length < 8) { msg.textContent = ERRORS.password_short; msg.className = "msg err"; return; }
+      if (password !== password2) { msg.textContent = "Those two passwords don't match."; msg.className = "msg err"; return; }
+      if (!code) { msg.textContent = ERRORS.code_required; msg.className = "msg err"; return; }
+
+      const btn = $("createbtn"); btn.disabled = true; msg.textContent = "Creating your account…"; msg.className = "msg";
+      const { data, error } = await MillerDB.redeemGuestPass({ code, email, password, full_name });
+      if (error) { btn.disabled = false; msg.textContent = "Something went wrong. Please try again in a moment."; msg.className = "msg err"; return; }
+      if (!data || !data.ok) {
+        btn.disabled = false;
+        const key = data && data.error;
+        msg.innerHTML = (ERRORS[key] || "We couldn't create your account. Please check your details and try again.") +
+          (key === "email_exists" ? ' <a href="login.html">Go to Sign In</a>' : "");
+        msg.className = "msg err";
+        return;
+      }
+      // Success — sign them in, then reveal the welcome + instructions.
+      msg.textContent = "Account created! Signing you in…"; msg.className = "msg ok";
+      await MillerDB.signInWithPassword(email, password);
+      $("signup").style.display = "none";
+      $("welcome").style.display = "block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  </script>
+</body>
+</html>

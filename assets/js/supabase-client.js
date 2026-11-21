@@ -323,6 +323,35 @@
     async deleteMessage(id) {
       return client.from("messages").delete().eq("id", id);
     },
+
+    /* ---- Guest passes (self-signup invite codes) ---- */
+    // Reviewer creates a code valid `days` days (default 7).
+    async createGuestPass({ days, label } = {}) {
+      const session = await this.getSession();
+      const code = "MILLER-" + randomCode().replace("-", "");
+      const expires_at = new Date(Date.now() + (days || 7) * 86400000).toISOString();
+      const { data, error } = await client.from("guest_passes").insert({
+        code, label: label || null,
+        created_by: session ? session.user.id : null,
+        expires_at,
+      }).select().single();
+      return { data, error, code, expires_at };
+    },
+    async listGuestPasses() {
+      return client.from("guest_passes").select("*").order("created_at", { ascending: false });
+    },
+    async revokeGuestPass(id) {
+      return client.from("guest_passes").update({ revoked: true }).eq("id", id);
+    },
+    async listGuestRedemptions() {
+      return client.from("guest_pass_redemptions").select("*").order("created_at", { ascending: false });
+    },
+    // Public: a joiner creates their own account with a valid code.
+    async redeemGuestPass({ code, email, password, full_name }) {
+      return client.functions.invoke("redeem-guest-pass", {
+        body: { code, email, password, full_name },
+      });
+    },
   };
 
   function randomCode() {

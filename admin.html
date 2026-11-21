@@ -67,6 +67,7 @@
         tabBtn("tree", "Tree Review", counts.tree) +
         tabBtn("members", "Members", counts.members) +
         tabBtn("invites", "Invites", counts.invites) +
+        tabBtn("guest", "Guest Passes", counts.guest) +
         (ME && ME.role === "admin" ? tabBtn("settings", "Settings", 0) : "") +
         '<a class="tab" href="tree.html" style="margin-left:auto;">View Tree</a>' +
         '<a class="tab" href="login.html">My Account</a>' +
@@ -83,19 +84,23 @@
       const { data: invites } = await MillerDB.client.from("invites").select("*").order("created_at", { ascending: false });
       const { data: subs } = await MillerDB.listSubmissions();
       const { data: persons } = await MillerDB.listPersons();
+      const { data: passes } = await MillerDB.listGuestPasses();
+      const { data: redemptions } = await MillerDB.listGuestRedemptions();
       const settings = (ME.role === "admin") ? await MillerDB.getSettings() : {};
       PERSON_BYID = {}; (persons || []).forEach(p => PERSON_BYID[p.id] = p);
       PROFILE_BYID = {}; (members || []).forEach(m => PROFILE_BYID[m.id] = m);
 
       const pendingReqs = (reqs || []).filter((r) => r.status === "pending").length;
       const pendingSubs = (subs || []).filter((s) => s.status === "pending").length;
-      const counts = { requests: pendingReqs, tree: pendingSubs, members: (members || []).length, invites: (invites || []).filter(i=>!i.used).length };
+      const activePasses = (passes || []).filter((p) => !p.revoked && new Date(p.expires_at) > new Date());
+      const counts = { requests: pendingReqs, tree: pendingSubs, members: (members || []).length, invites: (invites || []).filter(i=>!i.used).length, guest: activePasses.length };
 
       let body = tabsBar(counts);
       if (TAB === "requests") body += renderRequests(reqs || []);
       if (TAB === "tree") body += renderSubmissions(subs || []);
       if (TAB === "members") body += renderMembers(members || []);
       if (TAB === "invites") body += renderInvites(invites || []);
+      if (TAB === "guest") body += renderGuestPasses(passes || [], redemptions || []);
       if (TAB === "settings") body += renderSettings(settings);
       wrap.innerHTML = body;
       bind();
@@ -247,6 +252,63 @@
       return form + "<div style='height:1rem'></div>" + list;
     }
 
+    /* ---- Guest passes ---- */
+    function guestJoinLink(code) {
+      const site = (window.MILLER_CONFIG && window.MILLER_CONFIG.siteUrl) || location.origin;
+      return site.replace(/\/+$/, "") + "/join.html?code=" + encodeURIComponent(code);
+    }
+    function daysLeft(iso) { return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000); }
+    function passStatus(p) {
+      if (p.revoked) return "revoked";
+      if (new Date(p.expires_at) <= new Date()) return "expired";
+      return "active";
+    }
+    function guestBlurb(code, expires_at) {
+      const link = guestJoinLink(code);
+      const msg = "You're invited to the Miller Family app! 💜\n\n" +
+        "1) Open this link: " + link + "\n" +
+        "2) Create your account using invite code: " + code + "\n" +
+        "3) The page shows you how to install the app and add yourself to the family tree.\n\n" +
+        "Your invite code is good through " + fmt(expires_at) + ".";
+      return '<div class="notice">Guest pass ready — send this by text or email:' +
+        '<textarea class="credmsg" readonly rows="8" style="width:100%;margin-top:.5rem;font-family:ui-monospace,Consolas,monospace;font-size:.82rem;border-radius:8px;padding:.6rem;border:1px solid #d9c6ec;">' + esc(msg) + "</textarea>" +
+        '<button class="btn btn--gold btn--sm" data-copy>Copy message</button></div>';
+    }
+    function renderGuestPasses(passes, redemptions) {
+      const soon = passes.filter((p) => passStatus(p) === "active" && daysLeft(p.expires_at) <= 3);
+      const banner = soon.length
+        ? '<div class="notice" style="border:1px solid #caa24a;background:#fff7e6;color:#5a4a14;border-radius:12px;padding:.8rem 1rem;margin-bottom:1rem">⚠ ' +
+          soon.length + " guest pass" + (soon.length > 1 ? "es" : "") + " expiring within 3 days: " +
+          soon.map((p) => esc(p.code) + " (in " + Math.max(0, daysLeft(p.expires_at)) + "d)").join(", ") +
+          ". Admins are emailed automatically; create a new pass if one is still needed.</div>"
+        : "";
+      const form = '<div class="row"><h3>Create a guest pass</h3>' +
+        '<div class="meta">Generates an invite code valid for <b>7 days</b>. Text the message to anyone you want to let in — each person creates their own <b>permanent</b> account, and admins are emailed to verify every new signup.</div>' +
+        '<div class="actions" style="margin-top:.8rem">' +
+          '<input id="gp-label" placeholder="(optional) note, e.g. “Betty’s side”" style="padding:.5rem;border-radius:10px;border:1px solid #ccc;flex:1;min-width:160px;" />' +
+          '<button class="btn btn--gold btn--sm" id="gp-create">Create guest pass</button>' +
+        '</div><div id="gp-out" style="margin-top:.8rem"></div></div>';
+      const redByPass = {};
+      redemptions.forEach((r) => (redByPass[r.pass_id] = redByPass[r.pass_id] || []).push(r));
+      const list = !passes.length ? '<p class="empty">No guest passes yet.</p>' :
+        '<div class="list">' + passes.map((p) => {
+          const st = passStatus(p), reds = redByPass[p.id] || [];
+          return '<div class="row"><h3><span class="code">' + esc(p.code) + "</span> " +
+            '<span class="pill ' + (st === "active" ? "active" : "denied") + '">' + st + "</span></h3>" +
+            '<div class="meta">' + (p.label ? esc(p.label) + " · " : "") + "Created " + fmt(p.created_at) + " · " +
+              (st === "active" ? "Expires " + fmt(p.expires_at) + " (in " + Math.max(0, daysLeft(p.expires_at)) + " days)" : "Expired " + fmt(p.expires_at)) +
+              " · " + (p.uses || 0) + " account" + (p.uses === 1 ? "" : "s") + " created</div>" +
+            (reds.length ? '<div class="meta">Joined: ' + reds.map((r) => esc(r.full_name || r.email)).join(", ") + "</div>" : "") +
+            '<div class="actions">' +
+              (st === "active"
+                ? '<button class="btn btn--outline btn--sm" data-gpcopy="' + esc(p.code) + '" data-gpexp="' + esc(p.expires_at) + '">Copy invite message</button>' +
+                  '<button class="btn btn--outline btn--sm" data-gprevoke="' + p.id + '">Revoke</button>'
+                : "") +
+            '</div><div class="gp-copyout"></div></div>';
+        }).join("") + "</div>";
+      return banner + form + "<div style='height:1rem'></div>" + list;
+    }
+
     function bind() {
       wrap.querySelectorAll("[data-tab]").forEach((b) =>
         b.addEventListener("click", () => { TAB = b.dataset.tab; load(); }));
@@ -318,6 +380,31 @@
           if (error) alert(/unique|duplicate/i.test(error.message)
             ? "That tree person is already linked to another member."
             : "Could not update tree link: " + error.message);
+        }));
+
+      const gpCreate = document.getElementById("gp-create");
+      if (gpCreate) gpCreate.addEventListener("click", async () => {
+        gpCreate.disabled = true; gpCreate.textContent = "Creating…";
+        const label = (document.getElementById("gp-label").value || "").trim();
+        const { error, code, expires_at } = await MillerDB.createGuestPass({ days: 7, label });
+        gpCreate.disabled = false; gpCreate.textContent = "Create guest pass";
+        if (error) { alert("Could not create pass: " + error.message); return; }
+        const out = document.getElementById("gp-out");
+        out.innerHTML = guestBlurb(code, expires_at);
+        wireCopy(out);
+      });
+      wrap.querySelectorAll("[data-gpcopy]").forEach((b) =>
+        b.addEventListener("click", () => {
+          const out = b.closest(".row").querySelector(".gp-copyout");
+          out.innerHTML = guestBlurb(b.dataset.gpcopy, b.dataset.gpexp);
+          wireCopy(out);
+        }));
+      wrap.querySelectorAll("[data-gprevoke]").forEach((b) =>
+        b.addEventListener("click", async () => {
+          if (!confirm("Revoke this guest pass? The code will stop working immediately.")) return;
+          const { error } = await MillerDB.revokeGuestPass(b.dataset.gprevoke);
+          if (error) { alert("Could not revoke: " + error.message); return; }
+          load();
         }));
 
       const saveS = document.getElementById("save-settings");
