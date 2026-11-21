@@ -312,6 +312,7 @@
       if (!p) return;
       const partnerId = effectivePartner(id);
       const canEdit = ME.status === "active";
+      const canRemove = ME.role === "admin" || ME.role === "elder";
       let body =
         (PHOTO[id] ? '<img src="' + PHOTO[id] + '" alt="" style="width:120px;height:120px;object-fit:cover;border-radius:12px;border:2px solid var(--gold);display:block;margin:0 0 .9rem;" />' : "") +
         (yearsLine(p) ? '<div class="kv"><b>Years:</b> ' + yearsLine(p) + "</div>" : "") +
@@ -329,6 +330,11 @@
           (partnerId ? "" : '<button class="btn btn--sm btn--outline" data-act="spouse">Add a spouse</button>') +
           '<p class="hint" style="margin-top:.6rem">Changes are reviewed by a family elder before they appear.</p>';
       }
+      if (canRemove) {
+        body += '<hr style="border:0;border-top:1px solid #eee;margin:1rem 0" />' +
+          '<button class="btn btn--sm" data-act="remove" style="background:#b11;color:#fff;border-color:#b11;">🗑 Remove from tree</button>' +
+          '<p class="hint" style="margin-top:.4rem;color:#8a1b1b">Admins only. Permanently removes this person. Any children stay on the tree but lose this parent link.</p>';
+      }
       openModal(esc(p.full_name), body);
       if (canEdit) {
         modalRoot.querySelector('[data-act="edit"]').onclick = () => openEdit(p);
@@ -337,6 +343,41 @@
         modalRoot.querySelector('[data-act="sibling"]').onclick = () => openAddSibling(p);
         const sp = modalRoot.querySelector('[data-act="spouse"]'); if (sp) sp.onclick = () => openAddSpouse(p);
       }
+      if (canRemove) {
+        modalRoot.querySelector('[data-act="remove"]').onclick = () => openRemove(p);
+      }
+    }
+
+    function openRemove(p) {
+      const kids = unionChildren(p.id, effectivePartner(p.id));
+      const warn = kids.length
+        ? "<p class='hint'>" + esc(firstName(p.full_name)) + " has <b>" + kids.length +
+          (kids.length === 1 ? " child" : " children") + "</b> recorded. They will stay on the tree but will no longer show " +
+          esc(firstName(p.full_name)) + " as a parent.</p>"
+        : "";
+      openModal("Remove " + esc(p.full_name) + "?",
+        "<p>This permanently removes <b>" + esc(p.full_name) + "</b> from the family tree. This cannot be undone.</p>" +
+        warn +
+        '<div style="margin-top:1rem">' +
+          '<button class="btn btn--sm" id="rm-yes" style="background:#b11;color:#fff;border-color:#b11;">Yes, remove permanently</button> ' +
+          '<button class="btn btn--sm btn--outline" id="rm-no">Cancel</button>' +
+        "</div><p class='msg' id='rm-m'></p>");
+      document.getElementById("rm-no").onclick = () => openDetail(p.id);
+      document.getElementById("rm-yes").onclick = async (ev) => {
+        const btn = ev.currentTarget, msg = document.getElementById("rm-m");
+        btn.disabled = true; btn.textContent = "Removing…";
+        const { error } = await MillerDB.deletePerson(p.id);
+        if (error) {
+          btn.disabled = false; btn.textContent = "Yes, remove permanently";
+          msg.textContent = "Could not remove: " + error.message; msg.className = "msg err"; return;
+        }
+        msg.textContent = "Removed."; msg.className = "msg ok";
+        const [{ data: persons }, { data: partners }] = await Promise.all([MillerDB.listPersons(), MillerDB.listPartners()]);
+        PERSONS = persons || []; buildMaps(); applyPartners(partners || []);
+        await loadPhotos();
+        renderTree();
+        setTimeout(closeModal, 700);
+      };
     }
 
     function personFields(prefill) {

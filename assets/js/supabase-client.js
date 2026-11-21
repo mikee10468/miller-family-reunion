@@ -126,6 +126,12 @@
     async approveSubmission(id, note) {
       return client.rpc("approve_submission", { p_id: id, p_note: note || null });
     },
+    // Reviewer-only hard delete of a tree person. FKs (father_id/mother_id,
+    // profiles.person_id, comments) are ON DELETE SET NULL; partners cascade.
+    // So children/members are kept but unlinked, never deleted.
+    async deletePerson(id) {
+      return client.from("persons").delete().eq("id", id);
+    },
     async rejectSubmission(id, note) {
       return client.rpc("reject_submission", { p_id: id, p_note: note || null });
     },
