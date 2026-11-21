@@ -352,6 +352,44 @@
     async deleteMessage(id) {
       return client.from("messages").delete().eq("id", id);
     },
+    // Mark a conversation read up to now (clears its unread badge for me).
+    async markConversationRead(conversationId) {
+      const session = await this.getSession();
+      if (!session) return { error: { message: "Not signed in" } };
+      return client.from("conversation_reads").upsert(
+        { user_id: session.user.id, conversation_id: conversationId, last_read_at: new Date().toISOString() },
+        { onConflict: "user_id,conversation_id" }
+      );
+    },
+    // { conversationId: unreadCount } for conversations with >0 unread.
+    async unreadCounts() {
+      const { data, error } = await client.rpc("unread_counts");
+      const map = {};
+      (data || []).forEach((r) => { map[r.conversation_id] = Number(r.n) || 0; });
+      return { map, error };
+    },
+    // Fire-and-forget push to the other recipients after a message is sent.
+    async notifyNewMessage(conversationId) {
+      try { return await client.functions.invoke("send-push", { body: { conversationId } }); }
+      catch (e) { return { error: e }; }
+    },
+
+    /* ---- Web Push subscriptions ---- */
+    async savePushSubscription(sub) {
+      const session = await this.getSession();
+      if (!session) return { error: { message: "Not signed in" } };
+      const j = sub.toJSON ? sub.toJSON() : sub;
+      return client.from("push_subscriptions").upsert({
+        user_id: session.user.id,
+        endpoint: j.endpoint,
+        p256dh: j.keys && j.keys.p256dh,
+        auth: j.keys && j.keys.auth,
+        user_agent: (navigator && navigator.userAgent) || null,
+      }, { onConflict: "endpoint" });
+    },
+    async removePushSubscription(endpoint) {
+      return client.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    },
 
     /* ---- Guest passes (self-signup invite codes) ---- */
     // Reviewer creates a code valid `days` days (default 7).

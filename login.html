@@ -51,6 +51,7 @@
   <script src="assets/js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/js/supabase-client.js"></script>
+  <script src="assets/js/notify.js"></script>
   <script>
     const panel = document.getElementById("panel");
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -136,11 +137,33 @@
           (reviewer ? '<a class="btn btn--outline btn--block" href="admin.html">Admin / Approvals Panel</a>' : "") +
         "</div>" +
         '<hr class="divider" />' +
-        '<button class="btn btn--outline btn--block" id="changepw">Change my password</button>' +
+        '<button class="btn btn--outline btn--block" id="enablenotif">🔔 Turn on message notifications</button>' +
+        '<p class="quiet" id="notifmsg" style="margin-top:.4rem"></p>' +
+        '<button class="btn btn--outline btn--block" id="changepw" style="margin-top:.6rem">Change my password</button>' +
         '<div id="pwbox"></div>' +
         '<button class="btn btn--outline btn--block" id="signout" style="margin-top:.6rem">Sign Out</button>'
       );
       document.getElementById("signout").addEventListener("click", async () => { await MillerDB.signOut(); location.reload(); });
+
+      (function notifBtn() {
+        const en = document.getElementById("enablenotif");
+        const nm = document.getElementById("notifmsg");
+        if (!en) return;
+        function reflect() {
+          const st = window.MillerNotify ? MillerNotify.pushState() : "unsupported";
+          if (st === "granted") { en.textContent = "🔔 Notifications are on"; en.disabled = true; nm.textContent = "You'll get a ping when you have a new message."; }
+          else if (st === "denied") { en.textContent = "🔔 Notifications are blocked"; en.disabled = true; nm.textContent = "Re-enable them in your browser's site settings, then reload."; }
+          else if (st === "unsupported") { en.textContent = "🔔 Notifications not available here"; en.disabled = true; nm.textContent = "On iPhone, install the app to your Home Screen first (Share → Add to Home Screen), open it from there, then try again."; }
+          else { en.textContent = "🔔 Turn on message notifications"; en.disabled = false; nm.textContent = ""; }
+        }
+        reflect();
+        en.addEventListener("click", async () => {
+          en.disabled = true; nm.textContent = "Setting up…";
+          const ok = window.MillerNotify ? await MillerNotify.enablePush() : false;
+          nm.textContent = ok ? "All set! 🎉" : (nm.textContent === "Setting up…" ? "" : nm.textContent);
+          reflect();
+        });
+      })();
       document.getElementById("changepw").addEventListener("click", () => {
         const box = document.getElementById("pwbox");
         if (box.dataset.open === "1") { box.innerHTML = ""; box.dataset.open = ""; return; }

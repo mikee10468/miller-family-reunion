@@ -58,10 +58,11 @@
   <script src="assets/js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/js/supabase-client.js"></script>
+  <script src="assets/js/notify.js"></script>
   <script>
     const wrap = document.getElementById("wrap");
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
-    let ME = null, CONVS = [], MEMBERS = [], ACTIVE = null, POLL = null;
+    let ME = null, CONVS = [], MEMBERS = [], ACTIVE = null, POLL = null, UNREAD = {}, LAST_SEEN = {};
     const isReviewer = () => ME && (ME.role === "admin" || ME.role === "elder");
 
     function when(iso) {
@@ -75,11 +76,29 @@
       return "🔒 " + (others.map((m) => m.member_name || "Member").join(", ") || "Direct chat");
     }
 
+    function chipHTML(c) {
+      const n = ACTIVE === c.id ? 0 : (UNREAD[c.id] || 0);
+      return '<button class="cchip ' + (ACTIVE === c.id ? "on" : "") + '" data-conv="' + c.id + '">' +
+        esc(convTitle(c)) + (n > 0 ? '<span class="nbadge">' + (n > 99 ? "99+" : n) + "</span>" : "") + "</button>";
+    }
+    function convbarHTML() {
+      return CONVS.map(chipHTML).join("") +
+        (isReviewer() ? '<button class="cchip new" id="newdm">+ New direct message</button>' : "");
+    }
+    function wireConvbar() {
+      wrap.querySelectorAll("[data-conv]").forEach((b) => b.addEventListener("click", () => { ACTIVE = b.dataset.conv; draw(); }));
+      const nd = document.getElementById("newdm");
+      if (nd) nd.addEventListener("click", openNewDM);
+    }
+    function updateConvbar() {
+      const bar = document.getElementById("convbar");
+      if (!bar) return;
+      bar.innerHTML = convbarHTML();
+      wireConvbar();
+    }
     function shell() {
-      const chips = CONVS.map((c) => '<button class="cchip ' + (ACTIVE === c.id ? "on" : "") + '" data-conv="' + c.id + '">' + esc(convTitle(c)) + "</button>").join("");
-      const newBtn = isReviewer() ? '<button class="cchip new" id="newdm">+ New direct message</button>' : "";
       const active = CONVS.find((c) => c.id === ACTIVE);
-      return '<div class="convbar">' + chips + newBtn + "</div>" +
+      return '<div class="convbar" id="convbar">' + convbarHTML() + "</div>" +
         '<div class="panel"><div class="ptitle">' + (active ? esc(convTitle(active)) : "") + "</div>" +
         '<div class="thread" id="thread"><div class="empty">Loading messages…</div></div>' +
         '<div class="composer"><input id="minput" type="text" maxlength="4000" placeholder="Type a message…" autocomplete="off" />' +
@@ -107,7 +126,20 @@
     async function refresh() {
       if (!ACTIVE) return;
       const res = await MillerDB.listMessages(ACTIVE);
-      renderMessages(res.data || []);
+      const msgs = res.data || [];
+      renderMessages(msgs);
+      const newest = msgs.length ? msgs[msgs.length - 1].created_at : null;
+      if (document.visibilityState === "visible" && newest && LAST_SEEN[ACTIVE] !== newest) {
+        LAST_SEEN[ACTIVE] = newest;
+        await MillerDB.markConversationRead(ACTIVE);
+      }
+      await loadUnread();
+      updateConvbar();
+      if (window.MillerNotify) MillerNotify.refreshBadge();
+    }
+    async function loadUnread() {
+      const { map } = await MillerDB.unreadCounts();
+      UNREAD = map || {};
     }
 
     function startPolling() {
@@ -116,11 +148,7 @@
     }
 
     function wire() {
-      wrap.querySelectorAll("[data-conv]").forEach((b) => b.addEventListener("click", () => {
-        ACTIVE = b.dataset.conv; draw();
-      }));
-      const nd = document.getElementById("newdm");
-      if (nd) nd.addEventListener("click", openNewDM);
+      wireConvbar();
       const send = document.getElementById("sendbtn"), input = document.getElementById("minput");
       async function doSend() {
         const body = input.value.trim();
@@ -129,6 +157,7 @@
         const { error } = await MillerDB.sendMessage(ACTIVE, body);
         send.disabled = false; input.focus();
         if (error) { alert("Could not send: " + error.message); return; }
+        MillerDB.notifyNewMessage(ACTIVE); // fire-and-forget push to the others
         refresh();
       }
       if (send) send.addEventListener("click", doSend);

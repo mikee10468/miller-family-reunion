@@ -1,6 +1,6 @@
 /* Miller Family PWA service worker — offline app shell.
    Bump CACHE version whenever you change cached files. */
-const CACHE = "miller-family-v21";
+const CACHE = "miller-family-v22";
 const ASSETS = [
   "./",
   "./index.html",
@@ -14,6 +14,7 @@ const ASSETS = [
   "./manifest.webmanifest",
   "./assets/css/styles.css",
   "./assets/js/app.js",
+  "./assets/js/notify.js",
   "./family-reunion-flyer_2027.jpg",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
@@ -76,4 +77,33 @@ self.addEventListener("fetch", (event) => {
     );
   }
   // Cross-origin (fonts) fall through to the network by default.
+});
+
+// ---- Web Push: show a notification when the server sends one ----
+self.addEventListener("push", (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (_) { d = { body: event.data && event.data.text() }; }
+  const title = d.title || "Miller Family";
+  const options = {
+    body: d.body || "You have a new message.",
+    icon: "./assets/icons/icon-192.png",
+    badge: "./assets/icons/favicon-64.png",
+    tag: d.tag || "miller-chat",
+    renotify: true,
+    data: { url: d.url || "./chat.html" },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "./chat.html";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if (c.url.includes("chat.html") && "focus" in c) return c.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    })
+  );
 });

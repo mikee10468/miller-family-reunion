@@ -14,6 +14,10 @@ window.MILLER_CONFIG = {
   videosEnabled: false,       // premium video uploads off until you set a fee (Step 4)
   facebookPageUrl: "",        // your family Facebook page/group, for the Share button
   siteUrl: "https://mikee10468.github.io/miller-family-reunion/", // public app URL (used in invite messages)
+
+  // Web Push public key (safe to ship). The matching PRIVATE key is a Supabase
+  // secret (VAPID_PRIVATE_KEY) used only by the send-push Edge Function.
+  vapidPublicKey: "BDvUAInDL7LCGcjxkWDuRCtlcet_8E7cJNsmBk9WBFJ61Ehou2cllmJB0xZzd5213MC4W1MkuR6XNnFfkIZKu8s",
 };
 
 // True only when real keys have been pasted in.
