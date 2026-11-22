@@ -59,9 +59,9 @@
       color:#fff; font-family:"Cinzel",serif; font-size:.6rem; font-weight:700; box-shadow:0 0 0 2px #2ecc71, 0 1px 2px rgba(0,0,0,.25); }
     .treesearch { padding:.45rem .8rem; border-radius:999px; border:1px solid rgba(109,40,168,.35); font:inherit; font-family:Georgia,serif; min-width:160px; max-width:260px; }
     .subtreewrap { margin:.2rem 0 .4rem; }
-    .subtreebtn { background:#efe6f7; border:1px dashed var(--purple-600); color:#5a1e8c; border-radius:10px; padding:.3rem .7rem; font-family:"Cinzel",serif; font-size:.78rem; cursor:pointer; }
+    .subtreebtn { display:inline-flex; align-items:center; justify-content:center; width:1.7rem; height:1.7rem; background:#efe6f7; border:1px dashed var(--purple-600); color:#5a1e8c; border-radius:50%; padding:0; font-family:"Cinzel",serif; font-size:1rem; font-weight:700; line-height:1; cursor:pointer; }
     .subtreebtn:hover { background:#e6d6f7; }
-    .subtreebtn.drill { background:transparent; border-style:solid; color:#6d28a8; margin-left:.2rem; }
+    .subtreebtn.drill { background:transparent; border-style:solid; color:#6d28a8; margin-left:.25rem; font-size:.9rem; }
     .branchgrid { display:flex; flex-wrap:wrap; gap:.8rem; justify-content:center; margin:1rem 0; }
     .branchcard { flex:1 1 200px; max-width:260px; min-width:160px; background:#fff; border:1px solid rgba(109,40,168,.18); border-radius:14px;
       box-shadow:var(--shadow); padding:1rem; cursor:pointer; text-align:center; display:flex; flex-direction:column; align-items:center; gap:.3rem; font:inherit; transition:transform .1s, border-color .1s; }
@@ -318,15 +318,15 @@
     // A person's tree label: their nickname (if they chose to show it) else full name.
     const displayName = (p) => (p && p.show_nickname && p.nickname) ? p.nickname : (p ? (p.full_name || "") : "");
     // Show this many generations per view; deeper branches collapse into drillable sub-trees.
-    const MAXGEN = 3;
+    const MAXGEN = 4;
     function subtreeButton(id) {
-      return '<button class="subtreebtn drill" data-subtree="' + id + '">⤢ Open full branch</button>';
+      return '<button class="subtreebtn drill" data-subtree="' + id + '" title="Open full branch" aria-label="Open full branch">⤢</button>';
     }
     function expandToggle(id, expanded) {
-      const p = BYID[id], n = (CHILDREN[id] || []).length;
+      const nm = esc(firstName(displayName(BYID[id])));
       return expanded
-        ? '<button class="subtreebtn" data-collapse="' + id + '">– Hide ' + esc(firstName(displayName(p))) + "’s children</button>"
-        : '<button class="subtreebtn" data-expand="' + id + '">＋ Show ' + esc(firstName(displayName(p))) + "’s children (" + n + ")</button>";
+        ? '<button class="subtreebtn" data-collapse="' + id + '" title="Hide ' + nm + '’s children" aria-label="Hide ' + nm + '’s children">–</button>'
+        : '<button class="subtreebtn" data-expand="' + id + '" title="Show ' + nm + '’s children" aria-label="Show ' + nm + '’s children">＋</button>';
     }
 
     function personNode(p, variant) {
