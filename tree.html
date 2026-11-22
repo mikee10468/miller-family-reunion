@@ -65,6 +65,17 @@
     .bc__name { font-family:"Cinzel",serif; color:var(--purple-800); font-weight:700; line-height:1.2; }
     .bc__count { font-size:.78rem; color:#7a6a8a; }
     .bc__go { font-size:.78rem; color:var(--purple-600); font-family:"Cinzel",serif; }
+    .bc__live { display:inline-flex; align-items:center; gap:.25rem; margin-top:.3rem; }
+    .bc__liveav { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%;
+      color:#fff; font-family:"Cinzel",serif; font-size:.55rem; font-weight:700; box-shadow:0 0 0 2px #2ecc71; margin-left:-4px; }
+    .bc__liveav:first-child { margin-left:0; }
+    .bc__livetxt { font-size:.7rem; color:#2e8b57; font-family:"Cinzel",serif; margin-left:.2rem; }
+    .ancestor { text-align:center; margin:0 auto 1rem; }
+    .ancestor__label { font-family:"Cinzel",serif; color:var(--purple-600); font-size:.8rem; letter-spacing:.05em; margin-bottom:.3rem; }
+    /* faint tree silhouette behind the tree views */
+    body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.06;
+      background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20200%20260'%3E%3Cg%20fill='%233B0A58'%3E%3Crect%20x='95'%20y='150'%20width='10'%20height='98'%20rx='4'/%3E%3Cpath%20d='M100%20200%20C72%20192%2062%20180%2058%20166'%20stroke='%233B0A58'%20stroke-width='6'%20fill='none'/%3E%3Cpath%20d='M100%20190%20C128%20182%20138%20170%20142%20156'%20stroke='%233B0A58'%20stroke-width='6'%20fill='none'/%3E%3Ccircle%20cx='100'%20cy='92'%20r='58'/%3E%3Ccircle%20cx='55'%20cy='120'%20r='40'/%3E%3Ccircle%20cx='145'%20cy='120'%20r='40'/%3E%3Ccircle%20cx='100'%20cy='58'%20r='42'/%3E%3C/g%3E%3C/svg%3E") no-repeat center 14vh;
+      background-size:min(560px,86vw) auto; }
     .node__name { font-family:"Cinzel",serif; }
     .node__years { font-size:.68rem; color:#7a6a8a; }
     .node.dec .node__name::after { content:" ✝"; color:#b98bdd; font-size:.75em; }
@@ -164,12 +175,18 @@
       for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
       return "hsl(" + h + ",55%,42%)";
     }
-    // Refresh which nodes show an avatar, in-place (no full re-render).
+    // Refresh who's shown as "online now" — on person nodes (classic/drill)
+    // AND on branch cards (condensed overview), in-place (no full re-render).
     async function refreshOnline() {
       try {
         if (!MillerDB.whoIsOnline) return;
         const { data } = await MillerDB.whoIsOnline();
-        ONLINE = new Set((data || []).map((u) => u.person_id).filter(Boolean));
+        const rows = (data || []).filter((u) => u.person_id);
+        ONLINE = new Set(rows.map((u) => u.person_id));
+        const NAME = {}; rows.forEach((u) => { NAME[u.person_id] = u.full_name; });
+        const nameOf = (pid) => NAME[pid] || (BYID[pid] && BYID[pid].full_name) || "?";
+
+        // person nodes
         document.querySelectorAll(".node[data-id]").forEach((btn) => {
           const id = btn.dataset.id, on = ONLINE.has(id);
           let av = btn.querySelector(".node__av");
@@ -182,6 +199,19 @@
             const photo = btn.querySelector(".node__photo");
             btn.insertBefore(av, photo ? photo.nextSibling : btn.firstChild);
           } else if (!on && av) { av.remove(); }
+        });
+
+        // branch cards: show mini-avatars of anyone online within that branch
+        document.querySelectorAll(".branchcard[data-drill]").forEach((card) => {
+          const rid = card.dataset.drill, desc = descendantsOf(rid);
+          const inBranch = rows.map((u) => u.person_id).filter((pid) => pid === rid || desc[pid]);
+          let live = card.querySelector(".bc__live");
+          if (inBranch.length) {
+            if (!live) { live = document.createElement("span"); live.className = "bc__live"; card.appendChild(live); }
+            live.innerHTML = inBranch.slice(0, 3).map((pid) =>
+              '<span class="bc__liveav" style="background:' + avColor(nameOf(pid)) + '">' + esc(treeInitials(nameOf(pid))) + "</span>").join("") +
+              '<span class="bc__livetxt">' + inBranch.length + " online</span>";
+          } else if (live) { live.remove(); }
         });
       } catch (_) {}
     }
@@ -441,9 +471,25 @@
         else { const kp = primarySpouse(r.id); body = back + '<div class="family">' + coupleRibbon(r.id, kp ? kp.id : null, kp ? kp.status : null) + "</div>"; }
       } else if (VIEW === "condensed") {
         DRILL = null;
-        body = '<p class="hint" style="text-align:center;margin:.2rem 0 .4rem">Tap a family to open that branch.</p>' +
-          '<div class="branchgrid">' + withKids.map(branchCard).join("") + "</div>" +
-          eldersRibbons() + leftoversHtml(coverageLeftovers());
+        // Eldest known ancestor pinned at the top (Levi Miller), with all branches beneath him.
+        const topA = PERSONS.find((p) => /^\s*levi\b/i.test(p.full_name || "") && !p.father_id && !p.mother_id)
+          || (withKids.length === 1 ? withKids[0] : null);
+        const tapHint = '<p class="hint" style="text-align:center;margin:.4rem 0 .2rem">Tap a family to open that branch.</p>';
+        if (topA) {
+          const sp = primarySpouse(topA.id);
+          const kids = (CHILDREN[topA.id] || []).slice().sort((a, b) => (a.birth_year || 9999) - (b.birth_year || 9999));
+          const others = withKids.filter((r) => r.id !== topA.id && (!sp || r.id !== sp.id));
+          const cards = kids.concat(others).map(branchCard).join("");
+          const extraElders = elders.filter((r) => r.id !== topA.id && (!sp || r.id !== sp.id))
+            .map((r) => { const kp = primarySpouse(r.id); return '<div class="family">' + coupleRibbon(r.id, kp ? kp.id : null, kp ? kp.status : null) + "</div>"; }).join("");
+          body = '<div class="ancestor"><div class="ancestor__label">🌳 Our eldest known ancestor</div>' +
+              '<div class="family">' + coupleRibbon(topA.id, sp ? sp.id : null, sp ? sp.status : null) + "</div></div>" +
+            (cards ? tapHint + '<div class="branchgrid">' + cards + "</div>" : '<p class="hint" style="text-align:center">No branches linked under him yet.</p>') +
+            extraElders + leftoversHtml(coverageLeftovers());
+        } else {
+          body = tapHint + '<div class="branchgrid">' + withKids.map(branchCard).join("") + "</div>" +
+            eldersRibbons() + leftoversHtml(coverageLeftovers());
+        }
       } else {
         // classic full tree
         let blocks = "";

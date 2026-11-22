@@ -25,6 +25,10 @@
     .field input { width: 100%; padding: .8rem .9rem; border-radius: 12px; border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.95); color: var(--ink); font: inherit; font-family: Georgia, serif; }
     .field input:focus { outline: 2px solid var(--gold); }
     .btn--block { width: 100%; }
+    /* account-action buttons: a teal accent to set them apart from the purple/gold nav */
+    .btn--alt { background: linear-gradient(160deg,#2f7d79,#1f5b57); color:#fff; border:0; }
+    .btn--alt:hover { filter:brightness(1.08); }
+    .btn--alt:disabled { opacity:.55; }
     .msg { min-height: 1.3em; margin-top: .9rem; font-family: "Cinzel", serif; font-size: .9rem; }
     .msg.ok { color: var(--gold-soft); } .msg.err { color: #ffb4b4; }
     .quiet { color: #cdb8e6; font-size: .85rem; text-align: center; margin-top: 1.4rem; }
@@ -137,15 +141,15 @@
           '<a class="btn btn--gold btn--block" href="event.html">🎉 Family Events (RSVP, births, memorials)</a>' +
           '<a class="btn btn--gold btn--block" href="board.html">📝 Post What\'s on Your Mind</a>' +
           '<a class="btn btn--gold btn--block" href="chat.html">💬 Family Chat</a>' +
-          '<a class="btn btn--outline btn--block" href="feedback.html">✍️ Feedback & Suggestions</a>' +
+          '<a class="btn btn--alt btn--block" href="feedback.html">✍️ Feedback & Suggestions</a>' +
           (reviewer ? '<a class="btn btn--outline btn--block" href="admin.html">Admin / Approvals Panel</a>' : "") +
         "</div>" +
         '<hr class="divider" />' +
-        '<button class="btn btn--outline btn--block" id="enablenotif">🔔 Turn on message notifications</button>' +
+        '<button class="btn btn--alt btn--block" id="enablenotif">🔔 Turn on message notifications</button>' +
         '<p class="quiet" id="notifmsg" style="margin-top:.4rem"></p>' +
-        '<button class="btn btn--outline btn--block" id="changepw" style="margin-top:.6rem">Change my password</button>' +
+        '<button class="btn btn--alt btn--block" id="changepw" style="margin-top:.6rem">Change my password</button>' +
         '<div id="pwbox"></div>' +
-        '<button class="btn btn--outline btn--block" id="signout" style="margin-top:.6rem">Sign Out</button>'
+        '<button class="btn btn--alt btn--block" id="signout" style="margin-top:.6rem">Sign Out</button>'
       );
       document.getElementById("signout").addEventListener("click", async () => { await MillerDB.signOut(); location.reload(); });
 
