@@ -67,6 +67,7 @@
         tabBtn("requests", "Access Requests", counts.requests) +
         tabBtn("tree", "Tree Review", counts.tree) +
         tabBtn("members", "Members", counts.members) +
+        tabBtn("reconcile", "Tree Check", counts.reconcile) +
         tabBtn("invites", "Invites", counts.invites) +
         tabBtn("guest", "Guest Passes", counts.guest) +
         (ME && ME.role === "admin" ? tabBtn("settings", "Settings", 0) : "") +
@@ -94,12 +95,14 @@
       const pendingReqs = (reqs || []).filter((r) => r.status === "pending").length;
       const pendingSubs = (subs || []).filter((s) => s.status === "pending").length;
       const activePasses = (passes || []).filter((p) => !p.revoked && new Date(p.expires_at) > new Date());
-      const counts = { requests: pendingReqs, tree: pendingSubs, members: (members || []).length, invites: (invites || []).filter(i=>!i.used).length, guest: activePasses.length };
+      const unlinkedMembers = (members || []).filter((m) => !m.person_id || !PERSON_BYID[m.person_id]);
+      const counts = { requests: pendingReqs, tree: pendingSubs, members: (members || []).length, reconcile: unlinkedMembers.length, invites: (invites || []).filter(i=>!i.used).length, guest: activePasses.length };
 
       let body = tabsBar(counts);
       if (TAB === "requests") body += renderRequests(reqs || []);
       if (TAB === "tree") body += renderSubmissions(subs || []);
       if (TAB === "members") body += renderMembers(members || []);
+      if (TAB === "reconcile") body += renderReconcile(members || [], persons || []);
       if (TAB === "invites") body += renderInvites(invites || []);
       if (TAB === "guest") body += renderGuestPasses(passes || [], redemptions || []);
       if (TAB === "settings") body += renderSettings(settings);
@@ -199,6 +202,58 @@
           '<div class="pw-out"></div>' +
         "</div>"
       ).join("") + "</div>";
+    }
+
+    function renderReconcile(members, persons) {
+      const treePersons = Object.values(PERSON_BYID).sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
+      const linkedBy = {};                     // person_id -> member
+      members.forEach((m) => { if (m.person_id) linkedBy[m.person_id] = m; });
+      const unlinked = members.filter((m) => !m.person_id || !PERSON_BYID[m.person_id]);
+      const linked = members.filter((m) => m.person_id && PERSON_BYID[m.person_id]);
+      const orphans = (persons || []).filter((p) => !linkedBy[p.id]).sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
+      const chip = (txt, bg, col) => '<span style="display:inline-block;background:' + bg + ';color:' + col + ';border-radius:999px;padding:.15rem .6rem;font-size:.78rem;margin:.15rem;font-family:\'Cinzel\',serif;">' + esc(txt) + "</span>";
+
+      const linkSelect = (m) =>
+        'Link to tree person: <select data-person="' + m.id + '"><option value="">— not on tree —</option>' +
+        treePersons.map((p) => '<option value="' + p.id + '"' + (m.person_id === p.id ? " selected" : "") + ">" + esc(p.full_name) + (p.birth_year ? " (b. " + p.birth_year + ")" : "") + "</option>").join("") +
+        '</select> <span class="linkmsg" data-linkmsg="' + m.id + '"></span>';
+      const suggest = (m) => {
+        const nm = String(m.full_name || "").trim().toLowerCase();
+        if (!nm) return "";
+        const hit = treePersons.find((p) => String(p.full_name || "").trim().toLowerCase() === nm && !linkedBy[p.id]);
+        return hit
+          ? '<div class="meta" style="color:#1b6b1b">✓ exact name match on the tree: <b>' + esc(hit.full_name) + "</b> — select it below to link</div>"
+          : '<div class="meta" style="color:#b07400">No exact tree match — add them to the tree first, or pick the right person below.</div>';
+      };
+
+      let h = '<div class="row"><h3 style="margin:.2rem 0">Member ↔ Tree reconciliation</h3>' +
+        '<div class="meta">' + members.length + " members · " + linked.length + " linked · " +
+        '<b style="color:' + (unlinked.length ? "#b11" : "#1b6b1b") + '">' + unlinked.length + " not linked</b> · " +
+        orphans.length + " tree people with no account</div></div>";
+
+      h += '<h3 style="margin-top:1rem">⚠ Members not on the tree (' + unlinked.length + ")</h3>";
+      h += unlinked.length
+        ? '<div class="list">' + unlinked.map((m) =>
+            '<div class="row"><h3>' + esc(m.full_name || m.email) + " " + chip(m.status, m.status === "active" ? "#d6f2d6" : "#eee", "#333") +
+            (m.person_id && !PERSON_BYID[m.person_id] ? " " + chip("broken link", "#f7d6d6", "#b11") : "") + "</h3>" +
+            '<div class="meta">' + esc(m.email) + "</div>" + suggest(m) +
+            '<div class="actions" style="margin-top:.4rem">' + linkSelect(m) + "</div></div>").join("") + "</div>"
+        : '<p class="empty">Everyone is linked to the tree. 🎉</p>';
+
+      h += '<h3 style="margin-top:1.2rem">✓ Linked members (' + linked.length + ")</h3>";
+      h += linked.length
+        ? '<div class="list">' + linked.map((m) => { const p = PERSON_BYID[m.person_id];
+            return '<div class="row"><h3>' + esc(m.full_name || m.email) + " " + chip(m.status, m.status === "active" ? "#d6f2d6" : "#eee", "#333") + "</h3>" +
+              '<div class="meta">→ tree: <b>' + esc(p.full_name) + "</b>" + (p.is_living === false ? " (in memoriam)" : "") + "</div></div>"; }).join("") + "</div>"
+        : '<p class="empty">No members are linked yet.</p>';
+
+      h += '<h3 style="margin-top:1.2rem">Tree people with no account (' + orphans.length + ")</h3>";
+      h += orphans.length
+        ? '<div class="meta">On the tree but no app account yet (invite them, or they may be children/passed):</div><div style="margin-top:.4rem">' +
+            orphans.map((p) => chip(p.full_name + (p.is_living === false ? " ✝" : ""), "#efe6f7", "#5a1e8c")).join("") + "</div>"
+        : '<p class="empty">None — every tree person has an account.</p>';
+
+      return h;
     }
 
     // Build a ready-to-send message with the member's login, + a copy button
