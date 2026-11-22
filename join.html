@@ -71,6 +71,11 @@
           Here's everything you need to start using the app — and how to add the app to your phone or computer.</p>
         <a class="btn btn--gold btn--block" href="tree.html">Open the app →</a>
       </div>
+      <div class="card" id="sqcard">
+        <h2>🔐 Set up password recovery</h2>
+        <p class="lede">Pick 3 questions and answers. If you ever forget your password, you can reset it yourself from the Sign In page — no waiting on an admin.</p>
+        <div id="sqform-wrap"></div>
+      </div>
     </div>
 
     <!-- ================= INSTRUCTIONS (always visible) ================= -->
@@ -207,8 +212,34 @@
       await MillerDB.signInWithPassword(email, password);
       $("signup").style.display = "none";
       $("welcome").style.display = "block";
+      buildSecurityQuestions();
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
+
+    function buildSecurityQuestions() {
+      const wrap = $("sqform-wrap");
+      if (!wrap || !MillerDB.SECURITY_QUESTIONS) return;
+      const bank = MillerDB.SECURITY_QUESTIONS;
+      const block = (i, def) =>
+        '<label class="field"><span>Question ' + i + '</span><select id="sq-q' + i + '">' +
+          bank.map((q, idx) => "<option" + (idx === def ? " selected" : "") + ">" + q + "</option>").join("") +
+        "</select></label>" +
+        '<label class="field"><span>Your answer</span><input id="sq-a' + i + '" autocomplete="off" /></label>';
+      wrap.innerHTML = block(1, 0) + block(2, 1) + block(3, 2) +
+        '<button class="btn btn--gold btn--block" id="sq-save">Save recovery questions</button>' +
+        '<p class="msg" id="sq-msg"></p>';
+      $("sq-save").addEventListener("click", async () => {
+        const q = [1, 2, 3].map((i) => $("sq-q" + i).value);
+        const a = [1, 2, 3].map((i) => $("sq-a" + i).value.trim());
+        const m = $("sq-msg");
+        if (a.some((x) => !x)) { m.textContent = "Please answer all three questions."; m.className = "msg err"; return; }
+        if (new Set(q).size < 3) { m.textContent = "Please choose three different questions."; m.className = "msg err"; return; }
+        m.textContent = "Saving…"; m.className = "msg";
+        const { data, error } = await MillerDB.setSecurityQuestions(q, a);
+        if (error || data !== "ok") { m.textContent = "Could not save. You can set this later under My Account."; m.className = "msg err"; return; }
+        $("sqcard").innerHTML = '<h2>🔐 Recovery is set up ✅</h2><p class="lede">If you forget your password, reset it yourself from the Sign In page using these questions.</p>';
+      });
+    }
   </script>
 </body>
 </html>

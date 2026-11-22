@@ -419,6 +419,37 @@
         body: { code, email, password, full_name },
       });
     },
+
+    /* ---- Account recovery: security questions ---- */
+    SECURITY_QUESTIONS: [
+      "What city were you born in?",
+      "What was the name of your first pet?",
+      "What is your mother's maiden name?",
+      "What was the name of your elementary school?",
+      "What street did you grow up on?",
+      "What was your childhood nickname?",
+      "What is your favorite food?",
+      "What was the make of your first car?",
+      "What is the name of a favorite childhood friend?",
+      "What city did your parents meet in?",
+    ],
+    // Has the signed-in member set up recovery questions?
+    async hasSecurityQuestions() {
+      const { data } = await client.rpc("has_security_questions");
+      return !!data;
+    },
+    // Save the signed-in member's 3 questions + answers (answers hashed server-side).
+    async setSecurityQuestions(questions, answers) {
+      return client.rpc("set_security_questions", { p_q: questions, p_a: answers });
+    },
+    // Public (forgot password): fetch a user's 3 questions by email.
+    async getRecoveryQuestions(email) {
+      return client.functions.invoke("recover-password", { body: { action: "questions", email } });
+    },
+    // Public (forgot password): verify answers and set a new password.
+    async resetPasswordWithAnswers(email, answers, password) {
+      return client.functions.invoke("recover-password", { body: { action: "reset", email, answers, password } });
+    },
   };
 
   function randomCode() {

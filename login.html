@@ -32,6 +32,7 @@
     .divider { border: 0; border-top: 1px solid rgba(255,255,255,.15); margin: 1.4rem 0; }
     .role-chip { display:inline-block; background: rgba(230,180,34,.2); border:1px solid rgba(230,180,34,.5); color: var(--gold-soft); border-radius:999px; padding:.15rem .7rem; font-family:"Cinzel",serif; font-size:.75rem; letter-spacing:.05em; }
     .applinks { display:grid; gap:.6rem; margin-top:1rem; }
+    .field select { width:100%; padding:.8rem .9rem; border-radius:12px; border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.95); color:var(--ink); font:inherit; font-family:Georgia,serif; }
   </style>
 </head>
 <body>
@@ -78,8 +79,10 @@
         "</form>" +
         '<hr class="divider" />' +
         '<p class="quiet">New here? <a href="index.html">Request access →</a><br />' +
-        "Forgot your password? Ask a family admin to reset it for you.</p>"
+        'Forgot your password? <a href="#" id="forgot">Recover it with your security questions →</a></p>'
       );
+      const fg = document.getElementById("forgot");
+      if (fg) fg.addEventListener("click", (e) => { e.preventDefault(); recoveryView(); });
       document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const email = e.target.email.value.trim();
@@ -183,6 +186,111 @@
           if (error) { pm.textContent = error.message || "Could not update."; pm.className = "msg err"; return; }
           pm.textContent = "Password updated! Use it next time you sign in."; pm.className = "msg ok";
         });
+      });
+
+      (async function maybePromptQuestions() {
+        let has = true;
+        try { has = await MillerDB.hasSecurityQuestions(); } catch (_) { has = true; }
+        if (has) return;
+        const card = document.createElement("div");
+        card.innerHTML =
+          '<hr class="divider" />' +
+          '<div id="sqsetup"><h1 style="font-size:1.05rem">🔐 Set up password recovery</h1>' +
+          '<p class="quiet" style="text-align:left">Answer 3 questions so you can reset your own password later — no admin needed.</p>' +
+          '<form id="sqform">' + securityQuestionsFormHTML("s_") +
+            '<button class="btn btn--gold btn--block" type="submit">Save recovery questions</button>' +
+            '<button class="btn btn--outline btn--block" id="sqskip" type="button" style="margin-top:.5rem">Skip for now</button>' +
+            '<p class="msg" id="sqmsg"></p>' +
+          "</form></div>";
+        panel.appendChild(card);
+        document.getElementById("sqskip").addEventListener("click", () => { const s = document.getElementById("sqsetup"); if (s) s.remove(); });
+        document.getElementById("sqform").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const r = readSecurityQuestions(e.target, "s_");
+          const m = document.getElementById("sqmsg");
+          if (r.error) { m.textContent = r.error; m.className = "msg err"; return; }
+          m.textContent = "Saving…"; m.className = "msg";
+          const { data, error } = await MillerDB.setSecurityQuestions(r.questions, r.answers);
+          if (error || data !== "ok") { m.textContent = "Could not save. Please try again."; m.className = "msg err"; return; }
+          document.getElementById("sqsetup").innerHTML = '<hr class="divider" /><p class="msg ok">✅ Recovery questions saved. You can reset your own password anytime from the sign-in page.</p>';
+        });
+      })();
+    }
+
+    // ---- security-questions form helpers (shared by setup + recovery) ----
+    function securityQuestionsFormHTML(prefix) {
+      const bank = MillerDB.SECURITY_QUESTIONS;
+      const sel = (i, def) => '<select name="' + prefix + "q" + i + '">' +
+        bank.map((q, idx) => '<option value="' + esc(q) + '"' + (idx === def ? " selected" : "") + ">" + esc(q) + "</option>").join("") + "</select>";
+      let h = "";
+      for (let i = 1; i <= 3; i++) {
+        h += '<label class="field"><span>Question ' + i + "</span>" + sel(i, i - 1) + "</label>" +
+          '<label class="field"><span>Your answer</span><input name="' + prefix + "a" + i + '" autocomplete="off" required /></label>';
+      }
+      return h;
+    }
+    function readSecurityQuestions(form, prefix) {
+      const q = [1, 2, 3].map((i) => ((form[prefix + "q" + i] && form[prefix + "q" + i].value) || "").trim());
+      const a = [1, 2, 3].map((i) => ((form[prefix + "a" + i] && form[prefix + "a" + i].value) || "").trim());
+      if (a.some((x) => !x)) return { error: "Please answer all three questions." };
+      if (new Set(q).size < 3) return { error: "Please choose three different questions." };
+      return { questions: q, answers: a };
+    }
+
+    function recoveryView() {
+      render(
+        "<h1>Recover your password</h1>" +
+        "<p>Enter your email and we'll show your security questions.</p>" +
+        '<form id="rc-email-form">' +
+          '<label class="field"><span>Email</span><input type="email" name="email" required autocomplete="email" /></label>' +
+          '<button class="btn btn--gold btn--block" type="submit">Find my questions</button>' +
+          '<p class="msg" id="rc-msg"></p>' +
+        "</form>" +
+        '<hr class="divider" /><p class="quiet"><a href="#" id="rc-back">← Back to sign in</a></p>'
+      );
+      document.getElementById("rc-back").addEventListener("click", (e) => { e.preventDefault(); signInForm(); });
+      document.getElementById("rc-email-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = e.target.email.value.trim();
+        const m = document.getElementById("rc-msg");
+        m.textContent = "Looking up…"; m.className = "msg";
+        const { data, error } = await MillerDB.getRecoveryQuestions(email);
+        if (error || !data || !data.ok) {
+          m.textContent = (data && data.error === "not_found")
+            ? "No recovery questions are set up for that email. Please ask a family admin to reset your password."
+            : "Could not look that up. Please try again.";
+          m.className = "msg err"; return;
+        }
+        recoveryAnswerView(email, data.questions);
+      });
+    }
+    function recoveryAnswerView(email, questions) {
+      render(
+        "<h1>Answer your questions</h1>" +
+        '<form id="rc-reset-form">' +
+          questions.map((q, i) => '<label class="field"><span>' + esc(q) + '</span><input name="a' + (i + 1) + '" autocomplete="off" required /></label>').join("") +
+          '<label class="field"><span>New password (at least 8 characters)</span><input type="password" name="pw" minlength="8" required autocomplete="new-password" /></label>' +
+          '<label class="field"><span>Confirm new password</span><input type="password" name="pw2" minlength="8" required autocomplete="new-password" /></label>' +
+          '<button class="btn btn--gold btn--block" type="submit">Reset my password</button>' +
+          '<p class="msg" id="rc-msg"></p>' +
+        "</form>" +
+        '<hr class="divider" /><p class="quiet"><a href="#" id="rc-back">← Back to sign in</a></p>'
+      );
+      document.getElementById("rc-back").addEventListener("click", (e) => { e.preventDefault(); signInForm(); });
+      document.getElementById("rc-reset-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const f = e.target;
+        const answers = [f.a1.value.trim(), f.a2.value.trim(), f.a3.value.trim()];
+        const m = document.getElementById("rc-msg");
+        if (f.pw.value !== f.pw2.value) { m.textContent = "Passwords don't match."; m.className = "msg err"; return; }
+        m.textContent = "Checking…"; m.className = "msg";
+        const { data, error } = await MillerDB.resetPasswordWithAnswers(email, answers, f.pw.value);
+        if (error || !data || !data.ok) {
+          const map = { wrong_answers: "One or more answers are incorrect.", locked: "Too many tries. Please wait 15 minutes, then try again.", password_short: "Password must be at least 8 characters.", not_found: "Recovery isn't set up for that email.", need_three: "Please answer all three questions." };
+          m.textContent = (data && map[data.error]) || "Could not reset. Please try again."; m.className = "msg err"; return;
+        }
+        m.textContent = "Password reset! Redirecting to sign in…"; m.className = "msg ok";
+        setTimeout(() => signInForm("Password reset — please sign in with your new password.", "ok"), 1400);
       });
     }
 
