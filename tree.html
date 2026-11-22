@@ -58,6 +58,9 @@
     .node__av { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%;
       color:#fff; font-family:"Cinzel",serif; font-size:.6rem; font-weight:700; box-shadow:0 0 0 2px #2ecc71, 0 1px 2px rgba(0,0,0,.25); }
     .treesearch { padding:.45rem .8rem; border-radius:999px; border:1px solid rgba(109,40,168,.35); font:inherit; font-family:Georgia,serif; min-width:160px; max-width:260px; }
+    .subtreewrap { margin:.2rem 0 .4rem; }
+    .subtreebtn { background:#efe6f7; border:1px dashed var(--purple-600); color:#5a1e8c; border-radius:10px; padding:.3rem .7rem; font-family:"Cinzel",serif; font-size:.78rem; cursor:pointer; }
+    .subtreebtn:hover { background:#e6d6f7; }
     .branchgrid { display:flex; flex-wrap:wrap; gap:.8rem; justify-content:center; margin:1rem 0; }
     .branchcard { flex:1 1 200px; max-width:260px; min-width:160px; background:#fff; border:1px solid rgba(109,40,168,.18); border-radius:14px;
       box-shadow:var(--shadow); padding:1rem; cursor:pointer; text-align:center; display:flex; flex-direction:column; align-items:center; gap:.3rem; font:inherit; transition:transform .1s, border-color .1s; }
@@ -312,6 +315,13 @@
     const firstName = (n) => String(n || "").split(" ")[0];
     // A person's tree label: their nickname (if they chose to show it) else full name.
     const displayName = (p) => (p && p.show_nickname && p.nickname) ? p.nickname : (p ? (p.full_name || "") : "");
+    // Show this many generations per view; deeper branches collapse into drillable sub-trees.
+    const MAXGEN = 3;
+    function subtreeButton(id) {
+      const p = BYID[id];
+      return '<div class="subtreewrap"><button class="subtreebtn" data-subtree="' + id + '">▸ Open ' +
+        esc(firstName(displayName(p))) + "’s sub-tree (" + descendantCount(id) + " below)</button></div>";
+    }
 
     function personNode(p, variant) {
       const dec = p.is_living === false ? " dec" : "";
@@ -386,7 +396,8 @@
     }
     // All of a person's children (every relationship), oldest first, each tagged
     // with the other parent when it differs from the person's current spouse.
-    function kidsList(parentId, seen) {
+    function kidsList(parentId, seen, gen) {
+      gen = gen || 3;                       // kids listed here are the 3rd generation of the current view
       seen = seen || {}; if (seen[parentId]) return ""; seen[parentId] = 1; // guard against bad parent loops
       const kids = (CHILDREN[parentId] || []).slice().sort((a, b) => (a.birth_year || 9999) - (b.birth_year || 9999));
       if (!kids.length) return "";
@@ -395,9 +406,21 @@
       kids.forEach((k) => {
         rendered[k.id] = 1;
         const skp = primarySpouse(k.id); const sp = skp ? BYID[skp.id] : null; if (sp) rendered[sp.id] = 1;
+        let deeper;
+        if (gen >= MAXGEN) {
+          // collapse this person's descendants into a drillable sub-tree (mark them rendered so
+          // they don't fall into "Other family members")
+          if ((CHILDREN[k.id] || []).length) {
+            const d = descendantsOf(k.id);
+            for (const id in d) { rendered[id] = 1; const kk = BYID[id]; if (kk) { if (kk.father_id) rendered[kk.father_id] = 1; if (kk.mother_id) rendered[kk.mother_id] = 1; } }
+            deeper = subtreeButton(k.id);
+          } else deeper = "";
+        } else {
+          deeper = kidsList(k.id, seen, gen + 1);
+        }
         html += "<li>" + momLabel(k, parentId, primaryId) + personNode(k, "pill") +
           (sp ? ' <span class="amp" style="font-size:.75rem">♥</span> ' + personNode(sp, "pill") + statusBadge(skp.status) : "") +
-          kidsList(k.id, seen) + "</li>";
+          deeper + "</li>";
       });
       const btn = addKidBtn(parentId, primaryId || "");
       if (btn) html += '<li class="addkidli">' + btn + "</li>";
@@ -481,9 +504,10 @@
         : "";
 
       let body = "";
-      if (VIEW === "condensed" && DRILL && BYID[DRILL]) {
+      if (DRILL && BYID[DRILL]) {
+        // focused view on one person's branch — works from either Classic or Condensed
         const r = BYID[DRILL];
-        const back = '<button class="btn btn--sm btn--outline treeback">← All branches</button>';
+        const back = '<button class="btn btn--sm btn--outline treeback">← Back</button>';
         if (descendantCount(r.id) > 0) body = back + familyBlock(r.id);
         else { const kp = primarySpouse(r.id); body = back + '<div class="family">' + coupleRibbon(r.id, kp ? kp.id : null, kp ? kp.status : null) + "</div>"; }
       } else if (VIEW === "condensed") {
@@ -558,7 +582,11 @@
         PERSONS.find((p) => String(displayName(p)).toLowerCase().indexOf(q) !== -1) ||
         PERSONS.find((p) => String(p.full_name || "").toLowerCase().indexOf(q) !== -1) ||
         PERSONS.find((p) => String(p.nickname || "").toLowerCase().indexOf(q) !== -1);
-      if (hit) openDetail(hit.id);
+      if (!hit) return;
+      DRILL = hit.id;          // drill into that person's branch…
+      renderTree();
+      window.scrollTo(0, 0);
+      openDetail(hit.id);      // …and open their card
     }
 
     /* ---------- interactions ---------- */
@@ -569,6 +597,8 @@
       if (bc) { DRILL = bc.dataset.drill; renderTree(); window.scrollTo(0, 0); return; }
       const bk = e.target.closest(".treeback");
       if (bk) { DRILL = null; renderTree(); window.scrollTo(0, 0); return; }
+      const st = e.target.closest("[data-subtree]");
+      if (st) { DRILL = st.dataset.subtree; renderTree(); window.scrollTo(0, 0); return; }
       const add = e.target.closest(".addkid");
       if (add) { e.preventDefault(); return openAddChild(BYID[add.dataset.p], add.dataset.co || ""); }
       const n = e.target.closest(".node");

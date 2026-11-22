@@ -157,21 +157,11 @@
         '<hr class="divider" />' +
         '<button class="btn btn--alt btn--block" id="enablenotif">🔔 Turn on message notifications</button>' +
         '<p class="quiet" id="notifmsg" style="margin-top:.4rem"></p>' +
-        '<button class="btn btn--alt btn--block" id="themebtn" style="margin-top:.6rem">🌓 Appearance</button>' +
         '<button class="btn btn--alt btn--block" id="changepw" style="margin-top:.6rem">Change my password</button>' +
         '<div id="pwbox"></div>' +
         '<button class="btn btn--alt btn--block" id="signout" style="margin-top:.6rem">Sign Out</button>'
       );
       document.getElementById("signout").addEventListener("click", async () => { await MillerDB.signOut(); location.reload(); });
-
-      (function themeBtn() {
-        const b = document.getElementById("themebtn");
-        if (!b || !window.MillerTheme) return;
-        const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-        const label = () => { b.textContent = "🌓 Appearance: " + cap(MillerTheme.get()) + " (tap to change)"; };
-        label();
-        b.addEventListener("click", () => { MillerTheme.cycle(); label(); });
-      })();
 
       (function avatarUI() {
         const prev = document.getElementById("avprev");
