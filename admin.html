@@ -29,6 +29,7 @@
     .pill.pending{background:#fff2cc;color:#8a6a00;} .pill.active{background:#d6f5d6;color:#1b6b1b;}
     .pill.approved{background:#d6f5d6;color:#1b6b1b;} .pill.denied,.pill.suspended{background:#f7d6d6;color:#8a1b1b;}
     .pill.admin{background:#e9d6f7;color:#5a1e8c;} .pill.elder{background:#d6e4f7;color:#1b4d8a;} .pill.member{background:#eee;color:#555;}
+    .linkmsg{font-family:"Cinzel",serif;font-size:.78rem;margin-left:.4rem;color:#1b6b1b;}
     .empty { text-align:center; color:#6b5b7a; padding:2rem; font-family:"Cinzel",serif; }
     .notice { background:#fff8e6; border:1px solid var(--gold); border-radius:12px; padding:.9rem 1.1rem; margin-bottom:1rem; }
     .code { font-family:ui-monospace,Menlo,Consolas,monospace; background:#3B0A58; color:var(--gold-soft); padding:.3rem .6rem; border-radius:8px; letter-spacing:.08em; }
@@ -191,10 +192,10 @@
               "</select>" +
             (canRole ? ' <button class="btn btn--sm btn--outline" data-setpw="' + m.id + '" data-email="' + esc(m.email) + '" data-name="' + esc(m.full_name || "") + '">Set / reset password</button>' : "") +
           "</div>" +
-          (canRole ? '<div class="actions" style="margin-top:.4rem">Tree link: <select data-person="' + m.id + '">' +
+          (canRole ? '<div class="actions" style="margin-top:.4rem">Link to tree person: <select data-person="' + m.id + '">' +
             '<option value="">— not on tree (can\'t post) —</option>' +
             treePersons.map((p) => '<option value="' + p.id + '"' + (m.person_id === p.id ? " selected" : "") + ">" + esc(p.full_name) + (p.birth_year ? " (b. " + p.birth_year + ")" : "") + "</option>").join("") +
-            "</select></div>" : "") +
+            '</select> <span class="linkmsg" data-linkmsg="' + m.id + '">' + (m.person_id ? "✓ linked" : "") + "</span></div>" : "") +
           '<div class="pw-out"></div>' +
         "</div>"
       ).join("") + "</div>";
@@ -378,10 +379,17 @@
         }));
       wrap.querySelectorAll("[data-person]").forEach((sel) =>
         sel.addEventListener("change", async () => {
+          const note = wrap.querySelector('[data-linkmsg="' + sel.dataset.person + '"]');
+          if (note) { note.textContent = "saving…"; note.style.color = "#6b5b7a"; }
           const { error } = await MillerDB.setMemberPerson(sel.dataset.person, sel.value || null);
-          if (error) alert(/unique|duplicate/i.test(error.message)
-            ? "That tree person is already linked to another member."
-            : "Could not update tree link: " + error.message);
+          if (error) {
+            const msg = /unique|duplicate/i.test(error.message)
+              ? "that tree person is already linked to another member."
+              : "could not save: " + error.message;
+            if (note) { note.textContent = "⚠ " + msg; note.style.color = "#b11"; } else alert(msg);
+            return;
+          }
+          if (note) { note.textContent = sel.value ? "✓ linked" : "✓ unlinked"; note.style.color = "#1b6b1b"; }
         }));
 
       const gpCreate = document.getElementById("gp-create");
