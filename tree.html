@@ -55,6 +55,8 @@
     .node { border:0; cursor:pointer; font:inherit; background:transparent; display:inline-flex; align-items:center; gap:.35rem; text-align:left; transition:filter .15s; padding:0; }
     .node:hover { filter:brightness(1.06); }
     .node__photo { width:28px; height:28px; border-radius:50%; object-fit:cover; border:2px solid var(--gold); background:#eee; flex:0 0 auto; }
+    .node__av { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%;
+      color:#fff; font-family:"Cinzel",serif; font-size:.6rem; font-weight:700; box-shadow:0 0 0 2px #2ecc71, 0 1px 2px rgba(0,0,0,.25); }
     .node__name { font-family:"Cinzel",serif; }
     .node__years { font-size:.68rem; color:#7a6a8a; }
     .node.dec .node__name::after { content:" ✝"; color:#b98bdd; font-size:.75em; }
@@ -136,6 +138,40 @@
     let ME = null;
     let PERSONS = [], BYID = {}, PARTNERS_OF = {}, CHILDREN = {}, PHOTO = {};
     let CAN_EDIT = false;
+
+    // ---- Online-now avatars on tree nodes ----
+    let ONLINE = new Set();       // tree person_ids whose member is active now
+    let ONLINE_TIMER = null;
+    function treeInitials(name) {
+      const p = String(name || "?").trim().split(/\s+/);
+      return ((p[0] || "")[0] || "?").toUpperCase() + (p.length > 1 ? (p[p.length - 1][0] || "").toUpperCase() : "");
+    }
+    function avColor(name) {
+      let h = 0; const s = String(name || "?");
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+      return "hsl(" + h + ",55%,42%)";
+    }
+    // Refresh which nodes show an avatar, in-place (no full re-render).
+    async function refreshOnline() {
+      try {
+        if (!MillerDB.whoIsOnline) return;
+        const { data } = await MillerDB.whoIsOnline();
+        ONLINE = new Set((data || []).map((u) => u.person_id).filter(Boolean));
+        document.querySelectorAll(".node[data-id]").forEach((btn) => {
+          const id = btn.dataset.id, on = ONLINE.has(id);
+          let av = btn.querySelector(".node__av");
+          if (on && !av) {
+            const p = BYID[id]; if (!p) return;
+            av = document.createElement("span");
+            av.className = "node__av"; av.title = "Online now";
+            av.style.background = avColor(p.full_name);
+            av.textContent = treeInitials(p.full_name);
+            const photo = btn.querySelector(".node__photo");
+            btn.insertBefore(av, photo ? photo.nextSibling : btn.firstChild);
+          } else if (!on && av) { av.remove(); }
+        });
+      } catch (_) {}
+    }
 
     async function loadPhotos() {
       PHOTO = {};
@@ -382,6 +418,11 @@
           (reviewer ? '<a class="btn btn--sm btn--gold" href="admin.html#tree">Review submissions</a>' : "") +
         "</div>" +
         '<div class="families">' + blocks + eldersHtml + "</div>";
+
+      refreshOnline();
+      if (!ONLINE_TIMER) ONLINE_TIMER = setInterval(() => {
+        if (document.visibilityState === "visible") refreshOnline();
+      }, 25000);
     }
 
     /* ---------- interactions ---------- */
