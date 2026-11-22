@@ -112,15 +112,33 @@
     }
     const isAdmin = () => ME && ME.role === "admin";
     const canManageEvent = (ev) => ME && (ev.created_by === ME.id || isAdmin());
-    const kindIcon = (k) => (k === "birth" ? "👶 " : k === "death" ? "🕊️ " : "🎉 ");
+    const kindIcon = (k) => ({ birth: "👶 ", death: "🕊️ ", graduation: "🎓 ", wedding: "💍 " }[k] || "🎉 ");
+    function linkify(t) {
+      return esc(t).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    }
+    function schedRow(label, date, where) {
+      if (!date && !where) return "";
+      const bits = [];
+      if (date) bits.push(fmtD(date));
+      if (where) bits.push(esc(where));
+      return '<div class="nitem"><h3>' + label + '</h3><div class="meta">' + bits.join(" · ") + "</div></div>";
+    }
+    function registryBlock(ev) {
+      if (!ev.registry_url) return "";
+      const links = String(ev.registry_url).split(/\n+/).map((s) => s.trim()).filter(Boolean)
+        .map((u) => '<div class="meta">🎁 ' + linkify(u) + "</div>").join("");
+      return links ? '<div class="nitem"><h3>Registry / Gift List</h3>' + links + "</div>" : "";
+    }
     function syncUrl() { try { history.replaceState(null, "", "event.html?e=" + encodeURIComponent(CUR || "") + "&s=" + SEC); } catch (_) {} }
 
     /* ---------- top menu: choose an event ---------- */
     function menuCard() {
       const groups = [
-        { kind: "reunion", label: "🎉 Reunion", add: null },
-        { kind: "birth",   label: "👶 New Birth Notices", add: ["new-birth", "➕ Add a birth notice"] },
-        { kind: "death",   label: "🕊️ Death Notices",     add: ["new-death", "➕ Add a death notice"] },
+        { kind: "reunion",    label: "🎉 Reunion", add: null },
+        { kind: "birth",      label: "👶 New Birth Notices",  add: ["new-birth", "➕ Add a birth notice"] },
+        { kind: "graduation", label: "🎓 Graduations",        add: ["new-graduation", "➕ Add a graduation"] },
+        { kind: "wedding",    label: "💍 Weddings",           add: ["new-wedding", "➕ Add a wedding"] },
+        { kind: "death",      label: "🕊️ Death Notices",      add: ["new-death", "➕ Add a death notice"] },
       ];
       const opts = groups.map((g) => {
         const evs = EVENTS.filter((e) => e.kind === g.kind);
@@ -139,6 +157,7 @@
       const sub = [];
       if (ev.event_date) sub.push(fmtD(ev.event_date) + (ev.start_time ? " · " + esc(ev.start_time) : ""));
       if (ev.kind === "birth" && ev.parents) sub.push("Parents: " + esc(ev.parents));
+      if (ev.kind === "graduation" && ev.school) sub.push(esc(ev.school));
       if (ev.kind === "death" && (ev.born_date || ev.death_date)) sub.push((ev.born_date ? fmtD(ev.born_date) : "?") + " – " + (ev.death_date ? fmtD(ev.death_date) : "?"));
       if (ev.location) sub.push("📍 " + esc(ev.location));
       return '<button class="elrow" data-openevent="' + ev.id + '">' +
@@ -157,8 +176,10 @@
       let h = '<div class="card"><h2>Upcoming &amp; future events</h2>';
       h += up.length ? '<div class="ellist">' + up.map(eventRow).join("") + "</div>" : '<p class="empty">No upcoming events yet.</p>';
       h += '<div class="row" style="margin-top:1rem;gap:.5rem">' +
-        '<button class="btn btn--outline btn--sm" data-addk="new-birth">👶 Add a birth notice</button>' +
-        '<button class="btn btn--outline btn--sm" data-addk="new-death">🕊️ Add a death notice</button></div></div>';
+        '<button class="btn btn--outline btn--sm" data-addk="new-birth">👶 Birth</button>' +
+        '<button class="btn btn--outline btn--sm" data-addk="new-graduation">🎓 Graduation</button>' +
+        '<button class="btn btn--outline btn--sm" data-addk="new-wedding">💍 Wedding</button>' +
+        '<button class="btn btn--outline btn--sm" data-addk="new-death">🕊️ Death notice</button></div></div>';
       if (past.length) h += '<div class="card"><h2>Earlier</h2><div class="ellist">' + past.map(eventRow).join("") + "</div></div>";
       return h;
     }
@@ -178,6 +199,9 @@
       } else if (ev.kind === "death") {
         if (ev.born_date || ev.death_date)
           extra += '<div class="meta">' + esc(ev.born_date ? fmtD(ev.born_date) : "?") + " – " + esc(ev.death_date ? fmtD(ev.death_date) : "?") + "</div>";
+      } else if (ev.kind === "graduation") {
+        extra += ev.school ? '<div class="meta">🎓 ' + esc(ev.school) + "</div>" : "";
+        extra += ev.degree ? '<div class="meta">' + esc(ev.degree) + "</div>" : "";
       }
       const canDel = canManageEvent(ev) && ev.kind !== "reunion";
       return '<div class="ehead">' +
@@ -204,7 +228,24 @@
         if (ev.burial_location) h += '<div class="nitem"><h3>🌹 Burial</h3><div class="meta">' + esc(ev.burial_location) + "</div></div>";
         if (ev.eulogy) h += '<div class="subhead">EULOGY</div><div class="eulogy">' + esc(ev.eulogy) + "</div>";
       }
-      if (!dl && !ev.details && !(ev.kind === "death" && (ev.burial_location || ev.eulogy))) h += '<p class="empty">No details added yet.</p>';
+      if (ev.kind === "birth") {
+        h += registryBlock(ev);
+      }
+      if (ev.kind === "wedding") {
+        const sched = schedRow("💐 Bridal shower", ev.bridal_shower_date, ev.bridal_shower_where) +
+          schedRow("🍺 Bachelor party", ev.bachelor_date, ev.bachelor_where) +
+          schedRow("🥂 Bachelorette party", ev.bachelorette_date, ev.bachelorette_where) +
+          schedRow("🎼 Rehearsal", ev.rehearsal_date, ev.rehearsal_where) +
+          schedRow("👗 Dress fitting", ev.dress_fitting_date, null) +
+          schedRow("🤵 Suit fitting", ev.suit_fitting_date, null);
+        if (sched) h += '<div class="subhead">WEDDING SCHEDULE</div>' + sched;
+        if (ev.wedding_party) h += '<div class="subhead">WEDDING PARTY</div><p class="body">' + esc(ev.wedding_party) + "</p>";
+        h += registryBlock(ev);
+      }
+      const hasExtra = (ev.kind === "death" && (ev.burial_location || ev.eulogy)) ||
+        (ev.kind === "birth" && ev.registry_url) ||
+        (ev.kind === "wedding" && (ev.registry_url || ev.wedding_party || ev.bridal_shower_date || ev.bachelor_date || ev.bachelorette_date || ev.rehearsal_date || ev.dress_fitting_date || ev.suit_fitting_date));
+      if (!dl && !ev.details && !hasExtra) h += '<p class="empty">No details added yet.</p>';
       return h + "</div>";
     }
 
@@ -298,8 +339,55 @@
             '<label class="field"><span>Time</span><input id="f_time" type="text" maxlength="40" placeholder="e.g. 2:00 PM" /></label>' +
           "</div>" +
           '<label class="field"><span>Location</span><input id="f_loc" type="text" maxlength="160" placeholder="e.g. Grandma\'s house" /></label>' +
+          '<label class="field"><span>Registry / gift-list links (one per line)</span><textarea id="f_registry" rows="2" maxlength="1000" placeholder="https://www.babylist.com/…"></textarea></label>' +
           sectionChecks() +
           '<button class="btn btn--gold" id="createev">Create birth event</button><p class="msg" id="createmsg"></p></div>';
+      }
+      if (kind === "graduation") {
+        return '<div class="card"><h2>🎓 Add a Graduation</h2>' +
+          '<p class="lede">Celebrate a graduate! This becomes its own event — the family can RSVP, bring food, and volunteer.</p>' +
+          '<label class="field"><span>Graduate\'s name *</span><input id="f_grad" type="text" maxlength="100" placeholder="e.g. Jordan Miller" /></label>' +
+          '<div class="row">' +
+            '<label class="field"><span>School</span><input id="f_school" type="text" maxlength="140" placeholder="e.g. Penn State" /></label>' +
+            '<label class="field"><span>Degree / honor</span><input id="f_degree" type="text" maxlength="140" placeholder="e.g. B.S. Nursing / High School Diploma" /></label>' +
+          "</div>" +
+          '<div class="subhead">CEREMONY / PARTY</div>' +
+          '<div class="row">' +
+            '<label class="field"><span>Date</span><input id="f_date" type="date" /></label>' +
+            '<label class="field"><span>Time</span><input id="f_time" type="text" maxlength="40" placeholder="e.g. 3:00 PM" /></label>' +
+          "</div>" +
+          '<label class="field"><span>Location</span><input id="f_loc" type="text" maxlength="200" placeholder="Venue / address" /></label>' +
+          '<label class="field"><span>Details (optional)</span><textarea id="f_details" rows="2" maxlength="600"></textarea></label>' +
+          '<label class="field"><span>Registry / gift-list links (one per line)</span><textarea id="f_registry" rows="2" maxlength="1000" placeholder="(optional)"></textarea></label>' +
+          sectionChecks() +
+          '<button class="btn btn--gold" id="createev">Create graduation event</button><p class="msg" id="createmsg"></p></div>';
+      }
+      if (kind === "wedding") {
+        return '<div class="card"><h2>💍 Add a Wedding</h2>' +
+          '<p class="lede">Everything the family needs for the big day — ceremony, the lead-up events, the wedding party, and the registry.</p>' +
+          '<label class="field"><span>Couple *</span><input id="f_couple" type="text" maxlength="140" placeholder="e.g. Jordan &amp; Taylor Miller" /></label>' +
+          '<div class="subhead">CEREMONY</div>' +
+          '<div class="row">' +
+            '<label class="field"><span>Date</span><input id="f_date" type="date" /></label>' +
+            '<label class="field"><span>Time</span><input id="f_time" type="text" maxlength="40" placeholder="e.g. 4:00 PM" /></label>' +
+          "</div>" +
+          '<label class="field"><span>Venue / location</span><input id="f_loc" type="text" maxlength="200" placeholder="Ceremony &amp; reception venue" /></label>' +
+          '<label class="field"><span>Details (optional)</span><textarea id="f_details" rows="2" maxlength="600" placeholder="Dress code, hotel block, notes…"></textarea></label>' +
+          '<div class="subhead">LEAD-UP EVENTS (optional)</div>' +
+          '<div class="row"><label class="field"><span>Bridal shower — date</span><input id="f_bsd" type="date" /></label>' +
+            '<label class="field"><span>Bridal shower — time &amp; place</span><input id="f_bsw" type="text" maxlength="160" /></label></div>' +
+          '<div class="row"><label class="field"><span>Bachelor party — date</span><input id="f_bpd" type="date" /></label>' +
+            '<label class="field"><span>Bachelor — time &amp; place</span><input id="f_bpw" type="text" maxlength="160" /></label></div>' +
+          '<div class="row"><label class="field"><span>Bachelorette — date</span><input id="f_bted" type="date" /></label>' +
+            '<label class="field"><span>Bachelorette — time &amp; place</span><input id="f_btew" type="text" maxlength="160" /></label></div>' +
+          '<div class="row"><label class="field"><span>Rehearsal — date</span><input id="f_rd" type="date" /></label>' +
+            '<label class="field"><span>Rehearsal — time &amp; place</span><input id="f_rw" type="text" maxlength="160" /></label></div>' +
+          '<div class="row"><label class="field"><span>Dress fitting — date</span><input id="f_dfd" type="date" /></label>' +
+            '<label class="field"><span>Suit fitting — date</span><input id="f_sfd" type="date" /></label></div>' +
+          '<label class="field"><span>Wedding party (one name per line)</span><textarea id="f_party" rows="3" maxlength="1500" placeholder="Maid of Honor: …&#10;Best Man: …&#10;Bridesmaids: …&#10;Groomsmen: …"></textarea></label>' +
+          '<label class="field"><span>Registry / gift-list links (one per line)</span><textarea id="f_registry" rows="2" maxlength="1000" placeholder="https://…"></textarea></label>' +
+          sectionChecks() +
+          '<button class="btn btn--gold" id="createev">Create wedding event</button><p class="msg" id="createmsg"></p></div>';
       }
       return '<div class="card"><h2>🕊️ Add a Death Notice</h2>' +
         '<p class="lede">Honor a loved one. This becomes its own event with service, burial, and eulogy details — and the family can RSVP, bring food, and volunteer.</p>' +
@@ -324,9 +412,10 @@
     /* ---------- render ---------- */
     async function render() {
       let html = menuCard();
-      if (CUR === "new-birth" || CUR === "new-death") {
-        html += createForm(CUR === "new-birth" ? "birth" : "death");
-        wrap.innerHTML = html; wireMenu(); wireCreate(CUR === "new-birth" ? "birth" : "death");
+      if (typeof CUR === "string" && CUR.indexOf("new-") === 0) {
+        const kind = CUR.slice(4);
+        html += createForm(kind);
+        wrap.innerHTML = html; wireMenu(); wireCreate(kind);
         return;
       }
       if (!CUR) { wrap.innerHTML = html + landing(); wireMenu(); wireLanding(); return; }
@@ -467,6 +556,24 @@
           if (!baby) { m.textContent = "Please enter the baby's name."; m.className = "msg err"; return; }
           payload.title = baby; payload.baby_name = baby;
           payload.birth_date = dateVal("f_bdate"); payload.parents = val("f_parents") || null;
+          payload.registry_url = val("f_registry") || null;
+        } else if (kind === "graduation") {
+          const grad = val("f_grad");
+          if (!grad) { m.textContent = "Please enter the graduate's name."; m.className = "msg err"; return; }
+          payload.title = grad;
+          payload.school = val("f_school") || null; payload.degree = val("f_degree") || null;
+          payload.registry_url = val("f_registry") || null;
+        } else if (kind === "wedding") {
+          const couple = val("f_couple");
+          if (!couple) { m.textContent = "Please enter the couple."; m.className = "msg err"; return; }
+          payload.title = couple;
+          payload.wedding_party = val("f_party") || null;
+          payload.registry_url = val("f_registry") || null;
+          payload.bridal_shower_date = dateVal("f_bsd"); payload.bridal_shower_where = val("f_bsw") || null;
+          payload.bachelor_date = dateVal("f_bpd"); payload.bachelor_where = val("f_bpw") || null;
+          payload.bachelorette_date = dateVal("f_bted"); payload.bachelorette_where = val("f_btew") || null;
+          payload.rehearsal_date = dateVal("f_rd"); payload.rehearsal_where = val("f_rw") || null;
+          payload.dress_fitting_date = dateVal("f_dfd"); payload.suit_fitting_date = dateVal("f_sfd");
         } else {
           const name = val("f_name");
           if (!name) { m.textContent = "Please enter a name."; m.className = "msg err"; return; }
@@ -500,7 +607,7 @@
         return;
       }
       await loadEvents();
-      const valid = CUR && (CUR === "new-birth" || CUR === "new-death" || EVENTS.some((e) => e.id === CUR));
+      const valid = CUR && ((typeof CUR === "string" && CUR.indexOf("new-") === 0) || EVENTS.some((e) => e.id === CUR));
       if (!valid) CUR = null;   // default to the "all events" landing list
       render();
     })();
