@@ -62,6 +62,14 @@
     .tabs { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:1rem; }
     .tab { border:1px solid var(--purple-600); background:#fff; color:var(--purple-800); border-radius:999px; padding:.4rem .9rem; font-family:"Cinzel",serif; font-size:.82rem; cursor:pointer; }
     .tab.on { background:var(--purple-600); color:#fff; }
+    .ellist { display:flex; flex-direction:column; gap:.5rem; margin-top:.3rem; }
+    .elrow { display:flex; align-items:center; gap:.7rem; width:100%; text-align:left; background:#faf7fd; border:1px solid rgba(109,40,168,.15); border-radius:12px; padding:.7rem .9rem; cursor:pointer; font:inherit; }
+    .elrow:hover { background:#f3ecfb; }
+    .elicon { font-size:1.35rem; line-height:1; }
+    .elmain { flex:1; display:flex; flex-direction:column; min-width:0; }
+    .eltitle { font-family:"Cinzel",serif; color:var(--purple-800); font-size:1rem; }
+    .elsub { color:#6b5b7a; font-size:.82rem; margin-top:.1rem; }
+    .elgo { color:var(--purple-600); font-size:1.3rem; }
     .subhead { font-family:"Cinzel",serif; color:var(--purple-600); font-size:.82rem; letter-spacing:.03em; margin:1.1rem 0 .2rem; }
     .nitem { border:1px solid rgba(109,40,168,.18); border-radius:12px; padding:.75rem 1rem; margin-top:.7rem; }
     .nitem h3 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .15rem; font-size:1rem; }
@@ -122,8 +130,37 @@
         if (!inner) return "";
         return '<optgroup label="' + esc(g.label) + '">' + inner + "</optgroup>";
       }).join("");
+      const allOpt = '<option value=""' + (!CUR ? " selected" : "") + ">📋 All events</option>";
       return '<div class="card menu"><label class="field"><span>Choose an event</span>' +
-        '<select id="nav">' + opts + "</select></label></div>";
+        '<select id="nav">' + allOpt + opts + "</select></label></div>";
+    }
+
+    function eventRow(ev) {
+      const sub = [];
+      if (ev.event_date) sub.push(fmtD(ev.event_date) + (ev.start_time ? " · " + esc(ev.start_time) : ""));
+      if (ev.kind === "birth" && ev.parents) sub.push("Parents: " + esc(ev.parents));
+      if (ev.kind === "death" && (ev.born_date || ev.death_date)) sub.push((ev.born_date ? fmtD(ev.born_date) : "?") + " – " + (ev.death_date ? fmtD(ev.death_date) : "?"));
+      if (ev.location) sub.push("📍 " + esc(ev.location));
+      return '<button class="elrow" data-openevent="' + ev.id + '">' +
+        '<span class="elicon">' + kindIcon(ev.kind) + "</span>" +
+        '<span class="elmain"><span class="eltitle">' + esc(ev.title) + "</span>" +
+        (sub.length ? '<span class="elsub">' + sub.join(" · ") + "</span>" : "") + "</span>" +
+        '<span class="elgo">›</span></button>';
+    }
+
+    function landing() {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const dated = (e) => (e.event_date ? new Date(e.event_date + "T00:00:00") : null);
+      const up = EVENTS.filter((e) => { const d = dated(e); return !d || d >= today; })
+        .sort((a, b) => { const da = dated(a), db = dated(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return da - db; });
+      const past = EVENTS.filter((e) => { const d = dated(e); return d && d < today; }).sort((a, b) => dated(b) - dated(a));
+      let h = '<div class="card"><h2>Upcoming &amp; future events</h2>';
+      h += up.length ? '<div class="ellist">' + up.map(eventRow).join("") + "</div>" : '<p class="empty">No upcoming events yet.</p>';
+      h += '<div class="row" style="margin-top:1rem;gap:.5rem">' +
+        '<button class="btn btn--outline btn--sm" data-addk="new-birth">👶 Add a birth notice</button>' +
+        '<button class="btn btn--outline btn--sm" data-addk="new-death">🕊️ Add a death notice</button></div></div>';
+      if (past.length) h += '<div class="card"><h2>Earlier</h2><div class="ellist">' + past.map(eventRow).join("") + "</div></div>";
+      return h;
     }
 
     /* ---------- event header + section tabs ---------- */
@@ -292,12 +329,23 @@
         wrap.innerHTML = html; wireMenu(); wireCreate(CUR === "new-birth" ? "birth" : "death");
         return;
       }
+      if (!CUR) { wrap.innerHTML = html + landing(); wireMenu(); wireLanding(); return; }
       const ev = EVENTS.find((e) => e.id === CUR);
-      if (!ev) { wrap.innerHTML = html + '<div class="card"><p class="empty">Choose an event from the menu above.</p></div>'; wireMenu(); return; }
-      html += eventHeader(ev) + tabsHTML(ev) + '<div id="sec"><div class="card"><p class="empty">Loading…</p></div></div>';
+      if (!ev) { wrap.innerHTML = html + landing(); wireMenu(); wireLanding(); return; }
+      html += '<button class="btn btn--outline btn--sm" id="backall" style="margin-bottom:.8rem">← All events</button>' +
+        eventHeader(ev) + tabsHTML(ev) + '<div id="sec"><div class="card"><p class="empty">Loading…</p></div></div>';
       wrap.innerHTML = html;
       wireMenu(); wireHeader(); wireTabs(ev);
       renderSection(ev);
+    }
+
+    function wireLanding() {
+      wrap.querySelectorAll("[data-openevent]").forEach((b) => b.addEventListener("click", () => {
+        CUR = b.dataset.openevent; SEC = "details"; syncUrl(); render();
+      }));
+      wrap.querySelectorAll("[data-addk]").forEach((b) => b.addEventListener("click", () => {
+        CUR = b.dataset.addk; SEC = "details"; syncUrl(); render();
+      }));
     }
 
     async function renderSection(ev) {
@@ -322,16 +370,17 @@
     /* ---------- wiring ---------- */
     function wireMenu() {
       const nav = document.getElementById("nav");
-      if (nav) nav.addEventListener("change", () => { CUR = nav.value; SEC = "details"; syncUrl(); render(); });
+      if (nav) nav.addEventListener("change", () => { CUR = nav.value || null; SEC = "details"; syncUrl(); render(); });
     }
     function wireHeader() {
+      const back = document.getElementById("backall");
+      if (back) back.addEventListener("click", () => { CUR = null; SEC = "details"; syncUrl(); render(); });
       wrap.querySelectorAll("[data-delevent]").forEach((b) => b.addEventListener("click", async () => {
         if (!confirm("Delete this event and all its RSVPs, potluck and volunteer sign-ups? This can't be undone.")) return;
         const { error } = await MillerDB.deleteEvent(b.dataset.delevent);
         if (error) { alert("Could not delete: " + error.message); return; }
         await loadEvents();
-        const fam = EVENTS.find((e) => e.kind === "reunion");
-        CUR = fam ? fam.id : (EVENTS[0] && EVENTS[0].id) || null; SEC = "details"; syncUrl(); render();
+        CUR = null; SEC = "details"; syncUrl(); render();
       }));
     }
     function wireTabs(ev) {
@@ -452,7 +501,7 @@
       }
       await loadEvents();
       const valid = CUR && (CUR === "new-birth" || CUR === "new-death" || EVENTS.some((e) => e.id === CUR));
-      if (!valid) { const fam = EVENTS.find((e) => e.kind === "reunion"); CUR = fam ? fam.id : (EVENTS[0] && EVENTS[0].id) || null; }
+      if (!valid) CUR = null;   // default to the "all events" landing list
       render();
     })();
   </script>
