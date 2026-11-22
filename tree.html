@@ -166,8 +166,12 @@
     // ---- View mode (TEST): "condensed" = branch cards + drill-down; "classic" = full tree ----
     let VIEW = "condensed";
     try { VIEW = localStorage.getItem("millerTreeView") || "condensed"; } catch (_) {}
-    let DRILL = null;   // in condensed view: the branch (root person) being viewed, or null for the overview
+    let DRILL = null;   // the branch (root person) being viewed, or null for the overview/classic
+    const HISTORY = [];           // stack of previous DRILL values, for the Back button
     const EXPANDED = new Set();   // person ids whose collapsed sub-tree is expanded inline
+    let DRILLABLE_IDS = new Set(); // person ids rendered with a hidden sub-tree — clicking their name opens it
+    function drillTo(id) { HISTORY.push(DRILL); DRILL = id; renderTree(); window.scrollTo(0, 0); }
+    function drillBack() { DRILL = HISTORY.length ? HISTORY.pop() : null; renderTree(); window.scrollTo(0, 0); }
 
     // ---- Online-now avatars on tree nodes ----
     let ONLINE = new Set();       // tree person_ids whose member is active now
@@ -319,9 +323,6 @@
     const displayName = (p) => (p && p.show_nickname && p.nickname) ? p.nickname : (p ? (p.full_name || "") : "");
     // Show this many generations per view; deeper branches collapse into drillable sub-trees.
     const MAXGEN = 4;
-    function subtreeButton(id) {
-      return '<button class="subtreebtn drill" data-subtree="' + id + '" title="Open full branch" aria-label="Open full branch">⤢</button>';
-    }
     function expandToggle(id, expanded) {
       const nm = esc(firstName(displayName(BYID[id])));
       return expanded
@@ -418,12 +419,15 @@
             deeper = "";
           } else if (EXPANDED.has(k.id)) {
             // expanded inline: show the next generation right here (one level at a time)
-            deeper = '<div class="subtreewrap">' + expandToggle(k.id, true) + " " + subtreeButton(k.id) + "</div>" + kidsList(k.id, seen, gen + 1);
+            DRILLABLE_IDS.add(k.id);
+            deeper = '<div class="subtreewrap">' + expandToggle(k.id, true) + "</div>" + kidsList(k.id, seen, gen + 1);
           } else {
-            // collapsed: mark descendants rendered so they don't fall into "Other family members"
+            // collapsed: clicking this person's name opens their full branch; mark descendants
+            // rendered so they don't fall into "Other family members"
+            DRILLABLE_IDS.add(k.id);
             const d = descendantsOf(k.id);
             for (const id in d) { rendered[id] = 1; const kk = BYID[id]; if (kk) { if (kk.father_id) rendered[kk.father_id] = 1; if (kk.mother_id) rendered[kk.mother_id] = 1; } }
-            deeper = '<div class="subtreewrap">' + expandToggle(k.id, false) + " " + subtreeButton(k.id) + "</div>";
+            deeper = '<div class="subtreewrap">' + expandToggle(k.id, false) + "</div>";
           }
         } else {
           deeper = kidsList(k.id, seen, gen + 1);
@@ -483,6 +487,7 @@
 
     function renderTree() {
       for (const k in rendered) delete rendered[k];
+      DRILLABLE_IDS = new Set();
       CAN_EDIT = ME.status === "active";
       let roots = PERSONS.filter((p) => !p.father_id && !p.mother_id).filter((p) => {
         const pid = effectivePartner(p.id);
@@ -562,7 +567,7 @@
         '<div class="tree-header"><div class="doves">🕊️ 🌳 🕊️</div><h1>The Miller Family Tree</h1>' +
           '<div class="tagline">Different Generations ~ Same Family ~ One Love</div></div>' +
         '<div class="toolbar">' +
-          '<span class="hint">Tap any name for details' + (ME.status === "active" ? ", or to add relatives" : "") + ".</span>" +
+          '<span class="hint">Tap a name for details' + (ME.status === "active" ? " or to add relatives" : "") + "; a name with a ＋ opens its full branch.</span>" +
           '<input id="treesearch" class="treesearch" list="treenames" placeholder="🔍 Search a name…" autocomplete="off" />' +
           '<datalist id="treenames">' + PERSONS.map((p) => '<option value="' + esc(displayName(p)) + '"></option>').join("") + "</datalist>" +
           '<button class="btn btn--sm btn--outline viewtoggle">' + (VIEW === "condensed" ? "Classic view" : "Condensed view") + "</button>" +
@@ -593,22 +598,18 @@
         PERSONS.find((p) => String(p.full_name || "").toLowerCase().indexOf(q) !== -1) ||
         PERSONS.find((p) => String(p.nickname || "").toLowerCase().indexOf(q) !== -1);
       if (!hit) return;
-      DRILL = hit.id;          // drill into that person's branch…
-      renderTree();
-      window.scrollTo(0, 0);
+      drillTo(hit.id);         // drill into that person's branch…
       openDetail(hit.id);      // …and open their card
     }
 
     /* ---------- interactions ---------- */
     app.addEventListener("click", (e) => {
       const vt = e.target.closest(".viewtoggle");
-      if (vt) { VIEW = VIEW === "condensed" ? "classic" : "condensed"; try { localStorage.setItem("millerTreeView", VIEW); } catch (_) {} DRILL = null; renderTree(); window.scrollTo(0, 0); return; }
+      if (vt) { VIEW = VIEW === "condensed" ? "classic" : "condensed"; try { localStorage.setItem("millerTreeView", VIEW); } catch (_) {} DRILL = null; HISTORY.length = 0; renderTree(); window.scrollTo(0, 0); return; }
       const bc = e.target.closest(".branchcard");
-      if (bc) { DRILL = bc.dataset.drill; renderTree(); window.scrollTo(0, 0); return; }
+      if (bc) { drillTo(bc.dataset.drill); return; }
       const bk = e.target.closest(".treeback");
-      if (bk) { DRILL = null; renderTree(); window.scrollTo(0, 0); return; }
-      const st = e.target.closest("[data-subtree]");
-      if (st) { DRILL = st.dataset.subtree; renderTree(); window.scrollTo(0, 0); return; }
+      if (bk) { drillBack(); return; }
       const ex = e.target.closest("[data-expand]");
       if (ex) { EXPANDED.add(ex.dataset.expand); const y = window.scrollY; renderTree(); window.scrollTo(0, y); return; }
       const co = e.target.closest("[data-collapse]");
@@ -616,7 +617,11 @@
       const add = e.target.closest(".addkid");
       if (add) { e.preventDefault(); return openAddChild(BYID[add.dataset.p], add.dataset.co || ""); }
       const n = e.target.closest(".node");
-      if (n) openDetail(n.dataset.id);
+      if (n) {
+        // a name with a hidden sub-tree opens the full branch; otherwise show the detail card
+        if (DRILLABLE_IDS.has(n.dataset.id)) drillTo(n.dataset.id);
+        else openDetail(n.dataset.id);
+      }
     });
 
     function closeModal() { modalRoot.innerHTML = ""; }
