@@ -154,16 +154,16 @@
         if (!en) return;
         function reflect() {
           const st = window.MillerNotify ? MillerNotify.pushState() : "unsupported";
-          if (st === "granted") { en.textContent = "🔔 Notifications are on"; en.disabled = true; nm.textContent = "You'll get a ping when you have a new message."; }
-          else if (st === "denied") { en.textContent = "🔔 Notifications are blocked"; en.disabled = true; nm.textContent = "Re-enable them in your browser's site settings, then reload."; }
-          else if (st === "unsupported") { en.textContent = "🔔 Notifications not available here"; en.disabled = true; nm.textContent = "On iPhone, install the app to your Home Screen first (Share → Add to Home Screen), open it from there, then try again."; }
+          if (st === "granted") { en.textContent = "🔔 Notifications on — tap to re-sync this device"; en.disabled = false; }
+          else if (st === "denied") { en.textContent = "🔔 Notifications are blocked"; en.disabled = true; nm.textContent = "Re-enable them in your browser/site settings, then reload."; }
+          else if (st === "unsupported") { en.textContent = "🔔 Notifications not available here"; en.disabled = true; nm.textContent = "On iPhone, install the app to your Home Screen first (Share → Add to Home Screen), open it from that icon, then try again."; }
           else { en.textContent = "🔔 Turn on message notifications"; en.disabled = false; nm.textContent = ""; }
         }
         reflect();
         en.addEventListener("click", async () => {
-          en.disabled = true; nm.textContent = "Setting up…";
-          const ok = window.MillerNotify ? await MillerNotify.enablePush() : false;
-          nm.textContent = ok ? "All set! 🎉" : (nm.textContent === "Setting up…" ? "" : nm.textContent);
+          en.disabled = true; nm.textContent = "Setting up…"; nm.className = "quiet";
+          const res = window.MillerNotify ? await MillerNotify.enablePush() : { ok: false, error: "Not ready — reload and try again." };
+          nm.textContent = res.ok ? "All set! This device will get message pings. 🎉" : ("⚠️ " + res.error);
           reflect();
         });
       })();

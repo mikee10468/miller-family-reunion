@@ -63,31 +63,40 @@
     return Notification.permission; // 'default' | 'granted' | 'denied'
   }
 
+  // Returns { ok, error }. Works even if permission was already granted
+  // (re-subscribes and re-saves), and reports the real reason on failure.
   async function enablePush() {
-    if (pushState() === "unsupported") {
-      alert("Notifications aren't supported on this device/browser.\n\nTip: on iPhone, first install the app to your Home Screen (Share → Add to Home Screen), then open it from there.");
-      return false;
+    try {
+      if (pushState() === "unsupported") {
+        return { ok: false, error: "Notifications aren't available here. On iPhone, install the app to your Home Screen (Share → Add to Home Screen) and open it from that icon first." };
+      }
+      const key = (window.MILLER_CONFIG || {}).vapidPublicKey;
+      if (!key) return { ok: false, error: "Push isn't configured yet." };
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") return { ok: false, error: "You didn't allow notifications. Enable them in your browser/site settings and try again." };
+      await ensureSW();
+      const ready = await navigator.serviceWorker.ready;
+      let sub = await ready.pushManager.getSubscription();
+      if (!sub) sub = await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(key) });
+      const { error } = await MillerDB.savePushSubscription(sub);
+      if (error) return { ok: false, error: "Couldn't save your device: " + (error.message || error) };
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e && e.message) || String(e) };
     }
-    const key = (window.MILLER_CONFIG || {}).vapidPublicKey;
-    if (!key) { alert("Push isn't configured yet."); return false; }
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") return false;
-    const reg = (await ensureSW()) || (await navigator.serviceWorker.ready);
-    const ready = await navigator.serviceWorker.ready;
-    let sub = await ready.pushManager.getSubscription();
-    if (!sub) sub = await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(key) });
-    const { error } = await MillerDB.savePushSubscription(sub);
-    if (error) { alert("Could not save your notification setup: " + error.message); return false; }
-    return true;
   }
 
-  // If permission is already granted, keep the subscription fresh in the DB.
+  // If permission is already granted, make sure this device actually has a
+  // subscription saved — create one if missing. Runs on every page load, so
+  // simply opening the app repairs a device whose earlier save didn't stick.
   async function syncExistingSub() {
     try {
       if (pushState() !== "granted") return;
+      const key = (window.MILLER_CONFIG || {}).vapidPublicKey;
       await ensureSW();
       const ready = await navigator.serviceWorker.ready;
-      const sub = await ready.pushManager.getSubscription();
+      let sub = await ready.pushManager.getSubscription();
+      if (!sub && key) sub = await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(key) });
       if (sub) await MillerDB.savePushSubscription(sub);
     } catch (_) {}
   }
