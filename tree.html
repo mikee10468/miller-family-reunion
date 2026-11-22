@@ -183,22 +183,36 @@
         const { data } = await MillerDB.whoIsOnline();
         const rows = (data || []).filter((u) => u.person_id);
         ONLINE = new Set(rows.map((u) => u.person_id));
-        const NAME = {}; rows.forEach((u) => { NAME[u.person_id] = u.full_name; });
+        const NAME = {}, AVPATH = {};
+        rows.forEach((u) => { NAME[u.person_id] = u.full_name; if (u.avatar_url) AVPATH[u.person_id] = u.avatar_url; });
         const nameOf = (pid) => NAME[pid] || (BYID[pid] && BYID[pid].full_name) || "?";
+
+        // resolve signed URLs for any avatars among the online set
+        let URL = {};
+        const paths = Object.values(AVPATH);
+        if (paths.length && MillerDB.signedUrls) {
+          const map = await MillerDB.signedUrls(paths);
+          for (const pid in AVPATH) if (map[AVPATH[pid]]) URL[pid] = map[AVPATH[pid]];
+        }
+        // paint an avatar element: photo if available, else colored initials
+        const paint = (el, pid) => {
+          if (URL[pid]) { el.textContent = ""; el.style.background = "#fff center/cover no-repeat url('" + URL[pid] + "')"; }
+          else { el.textContent = treeInitials(nameOf(pid)); el.style.background = avColor(nameOf(pid)); }
+        };
 
         // person nodes
         document.querySelectorAll(".node[data-id]").forEach((btn) => {
           const id = btn.dataset.id, on = ONLINE.has(id);
           let av = btn.querySelector(".node__av");
-          if (on && !av) {
-            const p = BYID[id]; if (!p) return;
-            av = document.createElement("span");
-            av.className = "node__av"; av.title = "Online now";
-            av.style.background = avColor(p.full_name);
-            av.textContent = treeInitials(p.full_name);
-            const photo = btn.querySelector(".node__photo");
-            btn.insertBefore(av, photo ? photo.nextSibling : btn.firstChild);
-          } else if (!on && av) { av.remove(); }
+          if (on) {
+            if (!av) {
+              av = document.createElement("span");
+              av.className = "node__av"; av.title = "Online now";
+              const photo = btn.querySelector(".node__photo");
+              btn.insertBefore(av, photo ? photo.nextSibling : btn.firstChild);
+            }
+            paint(av, id);
+          } else if (av) { av.remove(); }
         });
 
         // branch cards: show mini-avatars of anyone online within that branch
@@ -208,9 +222,9 @@
           let live = card.querySelector(".bc__live");
           if (inBranch.length) {
             if (!live) { live = document.createElement("span"); live.className = "bc__live"; card.appendChild(live); }
-            live.innerHTML = inBranch.slice(0, 3).map((pid) =>
-              '<span class="bc__liveav" style="background:' + avColor(nameOf(pid)) + '">' + esc(treeInitials(nameOf(pid))) + "</span>").join("") +
-              '<span class="bc__livetxt">' + inBranch.length + " online</span>";
+            live.textContent = "";
+            inBranch.slice(0, 3).forEach((pid) => { const s = document.createElement("span"); s.className = "bc__liveav"; paint(s, pid); live.appendChild(s); });
+            const t = document.createElement("span"); t.className = "bc__livetxt"; t.textContent = inBranch.length + " online"; live.appendChild(t);
           } else if (live) { live.remove(); }
         });
       } catch (_) {}

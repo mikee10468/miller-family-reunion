@@ -183,21 +183,33 @@
       UNREAD = map || {};
     }
 
-    function renderPresence(list) {
+    function renderPresence(list, urls) {
       const box = document.getElementById("presence");
       if (!box) return;
       if (!list || !list.length) { box.innerHTML = '<span class="lbl">Online now</span><span class="none">checking…</span>'; return; }
-      const avatars = list.map((u) => {
+      box.innerHTML = '<span class="lbl">Online now · ' + list.length + "</span>";
+      list.forEach((u) => {
         const mine = ME && u.id === ME.id;
-        return '<span class="pav' + (mine ? " me" : "") + '" style="background:' + avColor(u.full_name) + '"' +
-          ' title="' + esc(u.full_name) + (mine ? " (you)" : "") + '">' + esc(initials(u.full_name)) +
-          '<span class="pdot"></span></span>';
-      }).join("");
-      box.innerHTML = '<span class="lbl">Online now · ' + list.length + "</span>" + avatars;
+        const img = urls && u.avatar_url && urls[u.avatar_url];
+        const el = document.createElement("span");
+        el.className = "pav" + (mine ? " me" : "");
+        el.title = esc(u.full_name) + (mine ? " (you)" : "");
+        if (img) { el.style.background = "#fff center/cover no-repeat url('" + img + "')"; }
+        else { el.style.background = avColor(u.full_name); el.textContent = initials(u.full_name); }
+        const dot = document.createElement("span"); dot.className = "pdot"; el.appendChild(dot);
+        box.appendChild(el);
+      });
     }
     async function loadPresence() {
-      try { if (window.MillerNotify) MillerNotify.beat(); const { data } = await MillerDB.whoIsOnline(); renderPresence(data); }
-      catch (_) {}
+      try {
+        if (window.MillerNotify) MillerNotify.beat();
+        const { data } = await MillerDB.whoIsOnline();
+        const rows = data || [];
+        let urls = {};
+        const paths = rows.map((u) => u.avatar_url).filter(Boolean);
+        if (paths.length && MillerDB.signedUrls) urls = await MillerDB.signedUrls(paths);
+        renderPresence(rows, urls);
+      } catch (_) {}
     }
 
     function startPolling() {

@@ -29,6 +29,11 @@
     .btn--alt { background: linear-gradient(160deg,#2f7d79,#1f5b57); color:#fff; border:0; }
     .btn--alt:hover { filter:brightness(1.08); }
     .btn--alt:disabled { opacity:.55; }
+    .avatarbox { display:flex; flex-direction:column; align-items:center; gap:.5rem; margin:.4rem 0 1rem; }
+    .avatarprev { width:88px; height:88px; border-radius:50%; background:#efe6f7; display:flex; align-items:center; justify-content:center;
+      color:#5a1e8c; font-family:"Cinzel",serif; font-weight:700; font-size:1.7rem; border:3px solid var(--gold); background-size:cover; background-position:center; }
+    .avatarbtns { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:center; }
+    .avatarbtns .btn { padding:.4rem .9rem; font-size:.84rem; width:auto; }
     .msg { min-height: 1.3em; margin-top: .9rem; font-family: "Cinzel", serif; font-size: .9rem; }
     .msg.ok { color: var(--gold-soft); } .msg.err { color: #ffb4b4; }
     .quiet { color: #cdb8e6; font-size: .85rem; text-align: center; margin-top: 1.4rem; }
@@ -135,6 +140,11 @@
       render(
         '<h1>Welcome, ' + esc((profile.full_name || profile.email).split(" ")[0]) + '! 💜</h1>' +
         '<p>You\'re signed in. <span class="role-chip">' + esc(profile.role) + "</span></p>" +
+        '<div class="avatarbox"><div class="avatarprev" id="avprev"></div>' +
+          '<div class="avatarbtns"><input type="file" id="avfile" accept="image/*" hidden />' +
+            '<button class="btn btn--alt" id="avchange" type="button">Add / change photo</button>' +
+            '<button class="btn btn--outline" id="avremove" type="button" style="display:none">Remove</button></div>' +
+          '<p class="quiet" id="avmsg" style="min-height:1em"></p></div>' +
         '<div class="applinks">' +
           '<a class="btn btn--gold btn--block" href="tree.html">🌳 Explore the Family Tree</a>' +
           '<a class="btn btn--gold btn--block" href="photos.html">📸 Family Photos</a>' +
@@ -152,6 +162,44 @@
         '<button class="btn btn--alt btn--block" id="signout" style="margin-top:.6rem">Sign Out</button>'
       );
       document.getElementById("signout").addEventListener("click", async () => { await MillerDB.signOut(); location.reload(); });
+
+      (function avatarUI() {
+        const prev = document.getElementById("avprev");
+        const fileIn = document.getElementById("avfile");
+        const changeBtn = document.getElementById("avchange");
+        const removeBtn = document.getElementById("avremove");
+        const msg = document.getElementById("avmsg");
+        if (!prev) return;
+        const avInitials = (n) => { const p = String(n || "?").trim().split(/\s+/); return ((p[0] || "")[0] || "?").toUpperCase() + (p.length > 1 ? (p[p.length - 1][0] || "").toUpperCase() : ""); };
+        async function paint() {
+          if (profile.avatar_url && MillerDB.signedUrl) {
+            const u = await MillerDB.signedUrl(profile.avatar_url);
+            if (u) { prev.style.backgroundImage = "url('" + u + "')"; prev.textContent = ""; removeBtn.style.display = ""; changeBtn.textContent = "Change photo"; return; }
+          }
+          prev.style.backgroundImage = ""; prev.textContent = avInitials(profile.full_name || profile.email);
+          removeBtn.style.display = "none"; changeBtn.textContent = "Add a photo / selfie";
+        }
+        paint();
+        changeBtn.addEventListener("click", () => fileIn.click());
+        fileIn.addEventListener("change", async () => {
+          const file = fileIn.files && fileIn.files[0];
+          if (!file) return;
+          if (!/^image\//.test(file.type)) { msg.textContent = "Please choose an image file."; return; }
+          if (file.size > 5 * 1024 * 1024) { msg.textContent = "That image is over 5 MB — please pick a smaller one."; return; }
+          msg.textContent = "Uploading…"; changeBtn.disabled = true;
+          const { error, path } = await MillerDB.uploadAvatar(file);
+          changeBtn.disabled = false; fileIn.value = "";
+          if (error) { msg.textContent = "Upload failed: " + (error.message || error); return; }
+          profile.avatar_url = path; msg.textContent = "Saved! 🎉"; paint();
+        });
+        removeBtn.addEventListener("click", async () => {
+          if (!confirm("Remove your profile photo?")) return;
+          msg.textContent = "Removing…";
+          const { error } = await MillerDB.removeAvatar();
+          if (error) { msg.textContent = "Could not remove: " + (error.message || error); return; }
+          profile.avatar_url = null; msg.textContent = ""; paint();
+        });
+      })();
 
       (function notifBtn() {
         const en = document.getElementById("enablenotif");

@@ -207,6 +207,41 @@
       const { data } = await client.storage.from(this.MEDIA_BUCKET).createSignedUrl(path, expires || 3600);
       return data ? data.signedUrl : null;
     },
+    // Batch signed URLs -> { path: signedUrl }.
+    async signedUrls(paths, expires) {
+      const map = {};
+      const list = (paths || []).filter(Boolean);
+      if (!list.length) return map;
+      const { data } = await client.storage.from(this.MEDIA_BUCKET).createSignedUrls(list, expires || 3600);
+      (data || []).forEach((d) => { if (d && d.signedUrl && !d.error) map[d.path] = d.signedUrl; });
+      return map;
+    },
+
+    /* ---- Profile avatar (photo / selfie) ---- */
+    async uploadAvatar(file) {
+      const session = await this.getSession();
+      if (!session) return { error: { message: "Not signed in" } };
+      const uid = session.user.id;
+      const ext = ((file.name || "").match(/\.[a-zA-Z0-9]+$/) || [".jpg"])[0].toLowerCase();
+      const path = uid + "/avatar_" + Date.now() + ext;
+      const up = await client.storage.from(this.MEDIA_BUCKET).upload(path, file, { upsert: false, contentType: file.type || "image/jpeg" });
+      if (up.error) return { error: up.error };
+      const prof = await this.getProfile();
+      const old = prof && prof.avatar_url;
+      const upd = await client.from("profiles").update({ avatar_url: path }).eq("id", uid);
+      if (upd.error) { try { await client.storage.from(this.MEDIA_BUCKET).remove([path]); } catch (_) {} return { error: upd.error }; }
+      if (old && old !== path) { try { await client.storage.from(this.MEDIA_BUCKET).remove([old]); } catch (_) {} }
+      return { error: null, path };
+    },
+    async removeAvatar() {
+      const session = await this.getSession();
+      if (!session) return { error: { message: "Not signed in" } };
+      const prof = await this.getProfile();
+      const old = prof && prof.avatar_url;
+      const upd = await client.from("profiles").update({ avatar_url: null }).eq("id", session.user.id);
+      if (!upd.error && old) { try { await client.storage.from(this.MEDIA_BUCKET).remove([old]); } catch (_) {} }
+      return upd;
+    },
     async deletePhoto(photo) {
       const del = await client.from("photos").delete().eq("id", photo.id);
       if (!del.error) await client.storage.from(this.MEDIA_BUCKET).remove([photo.storage_path]);
