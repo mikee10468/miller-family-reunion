@@ -101,16 +101,22 @@
     } catch (_) {}
   }
 
-  window.MillerNotify = { refreshBadge, enablePush, pushState, setBadge };
+  // Presence heartbeat: tell the server I'm here (so others see me online).
+  async function beat() {
+    try { const s = await MillerDB.getSession(); if (s) MillerDB.touchPresence(); } catch (_) {}
+  }
+
+  window.MillerNotify = { refreshBadge, enablePush, pushState, setBadge, beat };
 
   function start() {
     if (!MillerDB.configured) return;
     ensureSW();
     syncExistingSub();
     refreshBadge();
+    beat();
     if (timer) clearInterval(timer);
-    timer = setInterval(() => { if (document.visibilityState === "visible") refreshBadge(); }, 25000);
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshBadge(); });
+    timer = setInterval(() => { if (document.visibilityState === "visible") { refreshBadge(); beat(); } }, 25000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { refreshBadge(); beat(); } });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();

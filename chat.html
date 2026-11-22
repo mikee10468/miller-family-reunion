@@ -45,12 +45,27 @@
     .dlg h3 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .7rem; }
     .dlg select { width:100%; padding:.6rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); font:inherit; }
     .dlg .actions { display:flex; gap:.6rem; justify-content:flex-end; margin-top:1rem; }
+    #popoutbtn { cursor:pointer; }
+    /* Pop-out window: hide the page nav and let the chat fill the window */
+    body.popout .topbar a.home { display:none; }
+    body.popout .topbar { padding:.6rem 1rem; }
+    body.popout .topbar .script { font-size:1.3rem; }
+    body.popout .wrap { max-width:none; padding:.6rem; }
+    body.popout .panel { height: calc(100vh - 72px); }
+    /* Who's online strip */
+    .presence { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; margin-bottom:.75rem; min-height:2rem; }
+    .presence .lbl { font-family:"Cinzel",serif; font-size:.72rem; color:#6b5b7a; letter-spacing:.04em; margin-right:.2rem; }
+    .pav { position:relative; width:2rem; height:2rem; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+      color:#fff; font-family:"Cinzel",serif; font-size:.72rem; font-weight:700; box-shadow:0 1px 3px rgba(40,10,60,.25); }
+    .pav.me { outline:2px solid var(--gold,#caa24a); outline-offset:1px; }
+    .pdot { position:absolute; right:-1px; bottom:-1px; width:.6rem; height:.6rem; border-radius:50%; background:#2ecc71; border:2px solid #fff; }
+    .presence .none { font-style:italic; color:#8a7a99; font-size:.82rem; }
   </style>
 </head>
 <body>
   <div class="topbar">
     <div><div class="script">Family Chat</div><div class="sub">THE MILLER FAMILY</div></div>
-    <div><a class="home" href="board.html">📝 Messages</a> &nbsp; <a class="home" href="tree.html">🌳 Tree</a> &nbsp; <a class="home" href="login.html">Account</a></div>
+    <div><a class="home" id="popoutbtn" href="#" title="Open chat in its own window">⤢ Pop out</a> &nbsp; <a class="home" href="board.html">📝 Posts</a> &nbsp; <a class="home" href="tree.html">🌳 Tree</a> &nbsp; <a class="home" href="login.html">Account</a></div>
   </div>
 
   <div class="wrap" id="wrap"><div class="state"><p>Loading…</p></div></div>
@@ -62,8 +77,33 @@
   <script>
     const wrap = document.getElementById("wrap");
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
-    let ME = null, CONVS = [], MEMBERS = [], ACTIVE = null, POLL = null, UNREAD = {}, LAST_SEEN = {};
+
+    // Pop-out window support: ?popout=1 renders a compact, nav-free chat.
+    const POPOUT = new URLSearchParams(location.search).has("popout");
+    if (POPOUT) document.body.classList.add("popout");
+    (function wirePopout() {
+      const pob = document.getElementById("popoutbtn");
+      if (!pob) return;
+      pob.addEventListener("click", (e) => {
+        e.preventDefault();
+        const w = window.open("chat.html?popout=1", "millerchat",
+          "width=430,height=680,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes");
+        if (!w) alert("Your browser blocked the pop-out window. Allow pop-ups for this site and try again.\n\n(On iPhone it opens as a new tab instead.)");
+        else w.focus();
+      });
+    })();
+    let ME = null, CONVS = [], MEMBERS = [], ACTIVE = null, POLL = null, PPOLL = null, UNREAD = {}, LAST_SEEN = {};
     const isReviewer = () => ME && (ME.role === "admin" || ME.role === "elder");
+
+    function initials(name) {
+      const parts = String(name || "?").trim().split(/\s+/);
+      return ((parts[0] || "")[0] || "?").toUpperCase() + (parts.length > 1 ? (parts[parts.length - 1][0] || "").toUpperCase() : "");
+    }
+    function avColor(name) {
+      let h = 0; const s = String(name || "?");
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+      return "hsl(" + h + ",55%,42%)";
+    }
 
     function when(iso) {
       const d = new Date(iso), now = new Date();
@@ -99,6 +139,7 @@
     function shell() {
       const active = CONVS.find((c) => c.id === ACTIVE);
       return '<div class="convbar" id="convbar">' + convbarHTML() + "</div>" +
+        '<div class="presence" id="presence"><span class="lbl">Online now</span></div>' +
         '<div class="panel"><div class="ptitle">' + (active ? esc(convTitle(active)) : "") + "</div>" +
         '<div class="thread" id="thread"><div class="empty">Loading messages…</div></div>' +
         '<div class="composer"><input id="minput" type="text" maxlength="4000" placeholder="Type a message…" autocomplete="off" />' +
@@ -142,9 +183,29 @@
       UNREAD = map || {};
     }
 
+    function renderPresence(list) {
+      const box = document.getElementById("presence");
+      if (!box) return;
+      if (!list || !list.length) { box.innerHTML = '<span class="lbl">Online now</span><span class="none">checking…</span>'; return; }
+      const avatars = list.map((u) => {
+        const mine = ME && u.id === ME.id;
+        return '<span class="pav' + (mine ? " me" : "") + '" style="background:' + avColor(u.full_name) + '"' +
+          ' title="' + esc(u.full_name) + (mine ? " (you)" : "") + '">' + esc(initials(u.full_name)) +
+          '<span class="pdot"></span></span>';
+      }).join("");
+      box.innerHTML = '<span class="lbl">Online now · ' + list.length + "</span>" + avatars;
+    }
+    async function loadPresence() {
+      try { if (window.MillerNotify) MillerNotify.beat(); const { data } = await MillerDB.whoIsOnline(); renderPresence(data); }
+      catch (_) {}
+    }
+
     function startPolling() {
       if (POLL) clearInterval(POLL);
       POLL = setInterval(() => { if (document.visibilityState === "visible") refresh(); }, 3500);
+      loadPresence();
+      if (PPOLL) clearInterval(PPOLL);
+      PPOLL = setInterval(() => { if (document.visibilityState === "visible") loadPresence(); }, 15000);
     }
 
     function wire() {

@@ -368,6 +368,18 @@
       (data || []).forEach((r) => { map[r.conversation_id] = Number(r.n) || 0; });
       return { map, error };
     },
+    /* ---- Presence (who's logged in right now) ---- */
+    // Heartbeat: mark me as seen now. Fire-and-forget.
+    async touchPresence() {
+      try { return await client.rpc("touch_presence"); }
+      catch (e) { return { error: e }; }
+    },
+    // Active members seen in the last few minutes: [{ id, full_name, last_seen }].
+    async whoIsOnline() {
+      const { data, error } = await client.rpc("who_is_online");
+      return { data: data || [], error };
+    },
+
     // Fire-and-forget push to the other recipients after a message is sent.
     async notifyNewMessage(conversationId) {
       try { return await client.functions.invoke("send-push", { body: { conversationId } }); }
