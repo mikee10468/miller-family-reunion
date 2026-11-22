@@ -430,6 +430,27 @@
       return client.from("event_volunteer_signups").delete().eq("role_id", roleId).eq("member_id", session.user.id);
     },
 
+    /* ---- Feedback / suggestions ---- */
+    async submitFeedback({ category, body }) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      return client.from("feedback").insert({
+        user_id: session.user.id,
+        user_name: (profile && (profile.full_name || profile.email)) || "A family member",
+        category: category || "suggestion",
+        body,
+      });
+    },
+    async listFeedback() {
+      return client.from("feedback").select("*").order("created_at", { ascending: false });
+    },
+    async setFeedbackStatus(id, status) {
+      return client.from("feedback").update({ status }).eq("id", id);
+    },
+    async deleteFeedback(id) {
+      return client.from("feedback").delete().eq("id", id);
+    },
+
     /* ---- Tree link: which tree person a member IS ---- */
     // A member claims their own node on the tree (enables posting).
     async setMyPerson(personId) {

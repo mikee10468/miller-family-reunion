@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Feedback · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    body { background: linear-gradient(180deg, #faf5ef, #f1e8f7); min-height:100vh; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      background: linear-gradient(160deg, var(--purple-900), var(--purple-600)); color:#fff;
+      padding: calc(env(safe-area-inset-top,0px) + .9rem) 1rem .9rem; position:sticky; top:env(safe-area-inset-top,0px); z-index:20; }
+    .topbar .script { font-family:"Great Vibes",cursive; color:var(--gold); font-size:1.7rem; line-height:1; }
+    .topbar .sub { font-family:"Cinzel",serif; font-size:.7rem; letter-spacing:.1em; color:#e9dcff; }
+    .topbar a.home { color:var(--gold-soft); text-decoration:none; font-family:"Cinzel",serif; font-size:.85rem; }
+    .wrap { max-width:720px; margin:0 auto; padding:1.2rem 1rem calc(3rem + env(safe-area-inset-bottom,0px)); }
+    .card { background:#fff; border-radius:16px; box-shadow:var(--shadow); border:1px solid rgba(109,40,168,.12); padding:1.3rem; margin-bottom:1.4rem; }
+    .card h2 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .2rem; font-size:1.2rem; }
+    .card .lede { color:#6b5b7a; margin:.1rem 0 1rem; font-size:.92rem; }
+    .field { display:block; margin:.7rem 0; }
+    .field span { font-family:"Cinzel",serif; font-size:.8rem; display:block; margin-bottom:.3rem; color:var(--purple-800); }
+    .field input, .field select, .field textarea { width:100%; padding:.6rem .8rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; }
+    .msg { min-height:1.2em; font-family:"Cinzel",serif; margin-top:.5rem; } .msg.ok{color:#1b6b1b;} .msg.err{color:#b11;}
+    .fitem { border:1px solid rgba(109,40,168,.15); border-radius:12px; padding:.8rem 1rem; margin-top:.8rem; position:relative; }
+    .fitem .cat { display:inline-block; background:#efe6f7; color:#5a1e8c; border-radius:999px; padding:.1rem .6rem; font-size:.72rem; font-family:"Cinzel",serif; text-transform:capitalize; }
+    .fitem .st { font-size:.72rem; font-family:"Cinzel",serif; margin-left:.4rem; }
+    .st.new{color:#b07400;} .st.seen{color:#5a1e8c;} .st.done{color:#1b6b1b;}
+    .fitem .body { white-space:pre-wrap; color:#3a2f45; font-size:.92rem; margin:.4rem 0 .2rem; }
+    .fitem .who { color:#7a6a8a; font-size:.78rem; }
+    .fitem .del { position:absolute; top:.7rem; right:.8rem; background:transparent; border:0; color:#a33; cursor:pointer; font:inherit; font-size:.78rem; }
+    .adminbtns { margin-top:.4rem; display:flex; gap:.4rem; flex-wrap:wrap; }
+    .adminbtns button { font-size:.72rem; padding:.2rem .6rem; border-radius:999px; border:1px solid var(--purple-600); background:#fff; color:var(--purple-800); cursor:pointer; font-family:"Cinzel",serif; }
+    .empty { color:#6b5b7a; font-style:italic; font-size:.88rem; }
+    .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div><div class="script">Feedback</div><div class="sub">THE MILLER FAMILY</div></div>
+    <div><a class="home" href="tree.html">🌳 Tree</a> &nbsp; <a class="home" href="event.html">🎉 Events</a> &nbsp; <a class="home" href="chat.html">💬 Chat</a> &nbsp; <a class="home" href="login.html">Account</a></div>
+  </div>
+
+  <div class="wrap" id="wrap"><div class="state"><p>Loading…</p></div></div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script src="assets/js/notify.js"></script>
+  <script>
+    const wrap = document.getElementById("wrap");
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    let ME = null;
+    const CATS = [["suggestion","Suggestion"],["enhancement","Enhancement"],["bug","Something's broken"],["other","Other"]];
+
+    function when(iso) {
+      const d = new Date(iso), now = new Date();
+      const t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return d.toDateString() === now.toDateString() ? "Today " + t : d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    }
+    const isAdmin = () => ME && ME.role === "admin";
+    const isReviewer = () => ME && (ME.role === "admin" || ME.role === "elder");
+
+    function formCard() {
+      return '<div class="card"><h2>Share your feedback</h2>' +
+        '<p class="lede">Suggestions, enhancements, or anything that isn\'t working — tell us. The family hub gets better with your input. 💜</p>' +
+        '<label class="field"><span>Type</span><select id="fcat">' +
+          CATS.map((c) => '<option value="' + c[0] + '">' + c[1] + "</option>").join("") + "</select></label>" +
+        '<label class="field"><span>Details</span><textarea id="fbody" rows="5" maxlength="4000" placeholder="Describe your idea or the issue in as much detail as you like…"></textarea></label>' +
+        '<button class="btn btn--gold" id="send">Send feedback</button><p class="msg" id="fmsg"></p></div>';
+    }
+
+    function listCard(rows) {
+      const title = isReviewer() ? "All feedback" : "Your feedback";
+      const items = rows.length ? rows.map((f) => {
+        const mine = ME && f.user_id === ME.id;
+        const admin = isAdmin() ?
+          '<div class="adminbtns">' +
+            '<button data-st="seen" data-id="' + f.id + '">Mark seen</button>' +
+            '<button data-st="done" data-id="' + f.id + '">Mark done</button>' +
+            '<button data-st="new" data-id="' + f.id + '">Reopen</button></div>' : "";
+        return '<div class="fitem">' +
+          ((mine || isAdmin()) ? '<button class="del" data-del="' + f.id + '">remove</button>' : "") +
+          '<span class="cat">' + esc(f.category) + '</span><span class="st ' + esc(f.status) + '">· ' + esc(f.status) + "</span>" +
+          '<div class="body">' + esc(f.body) + "</div>" +
+          '<div class="who">' + (isReviewer() ? esc(f.user_name || "A member") + " · " : "") + esc(when(f.created_at)) + "</div>" +
+          admin + "</div>";
+      }).join("") : '<p class="empty">Nothing here yet.</p>';
+      return '<div class="card"><h2>' + title + "</h2>" + items + "</div>";
+    }
+
+    async function render() {
+      const rows = (await MillerDB.listFeedback()).data || [];
+      wrap.innerHTML = formCard() + listCard(rows);
+      wire();
+    }
+
+    function wire() {
+      const send = document.getElementById("send");
+      if (send) send.addEventListener("click", async () => {
+        const body = document.getElementById("fbody").value.trim();
+        const category = document.getElementById("fcat").value;
+        const m = document.getElementById("fmsg");
+        if (!body) { m.textContent = "Please enter some details."; m.className = "msg err"; return; }
+        m.textContent = "Sending…"; m.className = "msg"; send.disabled = true;
+        const { error } = await MillerDB.submitFeedback({ category, body });
+        send.disabled = false;
+        if (error) { m.textContent = "Could not send: " + error.message; m.className = "msg err"; return; }
+        render();
+      });
+      wrap.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => {
+        if (!confirm("Remove this feedback?")) return;
+        await MillerDB.deleteFeedback(b.dataset.del); render();
+      }));
+      wrap.querySelectorAll("[data-st]").forEach((b) => b.addEventListener("click", async () => {
+        await MillerDB.setFeedbackStatus(b.dataset.id, b.dataset.st); render();
+      }));
+    }
+
+    (async function init() {
+      if (!MillerDB.configured) { wrap.innerHTML = '<div class="state"><h2>Not connected yet</h2><p><a href="index.html">Back to the family page</a></p></div>'; return; }
+      await new Promise((r) => setTimeout(r, 250));
+      const session = await MillerDB.getSession();
+      if (!session) { location.href = "login.html"; return; }
+      ME = await MillerDB.getProfile();
+      if (!ME) { wrap.innerHTML = '<div class="state"><p>Finishing sign-in… <a href="feedback.html">refresh</a>.</p></div>'; return; }
+      if (ME.status !== "active") {
+        wrap.innerHTML = '<div class="state"><h2>Almost there!</h2><p>Your access is pending approval. Once an elder approves you, you can send feedback here.</p><p><a class="btn btn--gold" href="login.html">My Account</a></p></div>';
+        return;
+      }
+      render();
+    })();
+  </script>
+</body>
+</html>
