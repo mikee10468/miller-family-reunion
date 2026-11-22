@@ -57,6 +57,7 @@
     .node__photo { width:28px; height:28px; border-radius:50%; object-fit:cover; border:2px solid var(--gold); background:#eee; flex:0 0 auto; }
     .node__av { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%;
       color:#fff; font-family:"Cinzel",serif; font-size:.6rem; font-weight:700; box-shadow:0 0 0 2px #2ecc71, 0 1px 2px rgba(0,0,0,.25); }
+    .treesearch { padding:.45rem .8rem; border-radius:999px; border:1px solid rgba(109,40,168,.35); font:inherit; font-family:Georgia,serif; min-width:160px; max-width:260px; }
     .branchgrid { display:flex; flex-wrap:wrap; gap:.8rem; justify-content:center; margin:1rem 0; }
     .branchcard { flex:1 1 200px; max-width:260px; min-width:160px; background:#fff; border:1px solid rgba(109,40,168,.18); border-radius:14px;
       box-shadow:var(--shadow); padding:1rem; cursor:pointer; text-align:center; display:flex; flex-direction:column; align-items:center; gap:.3rem; font:inherit; transition:transform .1s, border-color .1s; }
@@ -528,6 +529,8 @@
           '<div class="tagline">Different Generations ~ Same Family ~ One Love</div></div>' +
         '<div class="toolbar">' +
           '<span class="hint">Tap any name for details' + (ME.status === "active" ? ", or to add relatives" : "") + ".</span>" +
+          '<input id="treesearch" class="treesearch" list="treenames" placeholder="🔍 Search a name…" autocomplete="off" />' +
+          '<datalist id="treenames">' + PERSONS.map((p) => '<option value="' + esc(displayName(p)) + '"></option>').join("") + "</datalist>" +
           '<button class="btn btn--sm btn--outline viewtoggle">' + (VIEW === "condensed" ? "Classic view" : "Condensed view") + "</button>" +
           (reviewer ? '<a class="btn btn--sm btn--gold" href="admin.html#tree">Review submissions</a>' : "") +
         "</div>" +
@@ -537,6 +540,25 @@
       if (!ONLINE_TIMER) ONLINE_TIMER = setInterval(() => {
         if (document.visibilityState === "visible") refreshOnline();
       }, 25000);
+
+      const srch = document.getElementById("treesearch");
+      if (srch) {
+        const go = () => doTreeSearch(srch.value);
+        srch.addEventListener("change", go);
+        srch.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+      }
+    }
+
+    function doTreeSearch(q) {
+      q = String(q || "").trim().toLowerCase();
+      if (!q) return;
+      const hit =
+        PERSONS.find((p) => String(displayName(p)).toLowerCase() === q) ||
+        PERSONS.find((p) => String(p.full_name || "").toLowerCase() === q) ||
+        PERSONS.find((p) => String(displayName(p)).toLowerCase().indexOf(q) !== -1) ||
+        PERSONS.find((p) => String(p.full_name || "").toLowerCase().indexOf(q) !== -1) ||
+        PERSONS.find((p) => String(p.nickname || "").toLowerCase().indexOf(q) !== -1);
+      if (hit) openDetail(hit.id);
     }
 
     /* ---------- interactions ---------- */

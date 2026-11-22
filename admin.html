@@ -30,6 +30,9 @@
     .pill.approved{background:#d6f5d6;color:#1b6b1b;} .pill.denied,.pill.suspended{background:#f7d6d6;color:#8a1b1b;}
     .pill.admin{background:#e9d6f7;color:#5a1e8c;} .pill.elder{background:#d6e4f7;color:#1b4d8a;} .pill.member{background:#eee;color:#555;}
     .linkmsg{font-family:"Cinzel",serif;font-size:.78rem;margin-left:.4rem;color:#1b6b1b;}
+    .filterbar{display:flex;align-items:center;gap:.5rem;margin:.2rem 0 .7rem;}
+    .filterbar input{flex:1;max-width:420px;padding:.5rem .8rem;border-radius:999px;border:1px solid rgba(109,40,168,.3);font:inherit;}
+    .filtercount{font-family:"Cinzel",serif;font-size:.78rem;color:#6b5b7a;}
     .empty { text-align:center; color:#6b5b7a; padding:2rem; font-family:"Cinzel",serif; }
     .notice { background:#fff8e6; border:1px solid var(--gold); border-radius:12px; padding:.9rem 1.1rem; margin-bottom:1rem; }
     .code { font-family:ui-monospace,Menlo,Consolas,monospace; background:#3B0A58; color:var(--gold-soft); padding:.3rem .6rem; border-radius:8px; letter-spacing:.08em; }
@@ -233,11 +236,17 @@
 
       h += '<h3 style="margin-top:1rem">⚠ Members not on the tree (' + unlinked.length + ")</h3>";
       h += unlinked.length
-        ? '<div class="list">' + unlinked.map((m) =>
-            '<div class="row"><h3>' + esc(m.full_name || m.email) + " " + chip(m.status, m.status === "active" ? "#d6f2d6" : "#eee", "#333") +
-            (m.person_id && !PERSON_BYID[m.person_id] ? " " + chip("broken link", "#f7d6d6", "#b11") : "") + "</h3>" +
-            '<div class="meta">' + esc(m.email) + "</div>" + suggest(m) +
-            '<div class="actions" style="margin-top:.4rem">' + linkSelect(m) + "</div></div>").join("") + "</div>"
+        ? '<div class="list">' + unlinked.map((m) => {
+            const nm = String(m.full_name || "").trim().toLowerCase();
+            const hit = nm ? treePersons.find((p) => String(p.full_name || "").trim().toLowerCase() === nm && !linkedBy[p.id]) : null;
+            const addBtn = (!hit && m.full_name)
+              ? '<button class="btn btn--sm btn--gold" data-addtree="' + m.id + '" data-name="' + esc(m.full_name) + '">＋ Add to tree &amp; link</button> '
+              : "";
+            return '<div class="row"><h3>' + esc(m.full_name || m.email) + " " + chip(m.status, m.status === "active" ? "#d6f2d6" : "#eee", "#333") +
+              (m.person_id && !PERSON_BYID[m.person_id] ? " " + chip("broken link", "#f7d6d6", "#b11") : "") + "</h3>" +
+              '<div class="meta">' + esc(m.email) + "</div>" + suggest(m) +
+              '<div class="actions" style="margin-top:.4rem">' + addBtn + linkSelect(m) + "</div></div>";
+          }).join("") + "</div>"
         : '<p class="empty">Everyone is linked to the tree. 🎉</p>';
 
       h += '<h3 style="margin-top:1.2rem">✓ Linked members (' + linked.length + ")</h3>";
@@ -367,6 +376,31 @@
       return banner + form + "<div style='height:1rem'></div>" + list;
     }
 
+    // Lightweight per-list filter box (added above every list with 2+ rows).
+    function attachFilters() {
+      wrap.querySelectorAll(".list").forEach((list) => {
+        const prev = list.previousElementSibling;
+        if (prev && prev.classList && prev.classList.contains("filterbar")) return;
+        if (list.querySelectorAll(":scope > .row").length < 2) return;
+        const bar = document.createElement("div");
+        bar.className = "filterbar";
+        bar.innerHTML = '<input type="text" placeholder="Filter this list… (name, email, status, role)" aria-label="Filter list" /><span class="filtercount"></span>';
+        const inp = bar.querySelector("input"), cnt = bar.querySelector(".filtercount");
+        const run = () => {
+          const q = inp.value.trim().toLowerCase();
+          let shown = 0;
+          list.querySelectorAll(":scope > .row").forEach((r) => {
+            const hit = !q || r.textContent.toLowerCase().indexOf(q) !== -1;
+            r.style.display = hit ? "" : "none";
+            if (hit) shown++;
+          });
+          cnt.textContent = q ? shown + " match" + (shown === 1 ? "" : "es") : "";
+        };
+        inp.addEventListener("input", run);
+        list.parentNode.insertBefore(bar, list);
+      });
+    }
+
     function bind() {
       wrap.querySelectorAll("[data-tab]").forEach((b) =>
         b.addEventListener("click", () => { TAB = b.dataset.tab; load(); }));
@@ -446,6 +480,19 @@
           }
           if (note) { note.textContent = sel.value ? "✓ linked" : "✓ unlinked"; note.style.color = "#1b6b1b"; }
         }));
+      wrap.querySelectorAll("[data-addtree]").forEach((b) =>
+        b.addEventListener("click", async () => {
+          const name = b.dataset.name;
+          if (!confirm('Add "' + name + '" to the family tree and link this account?\n\n(Creates a bare tree entry — you can set their parents/relations later from the tree.)')) return;
+          b.disabled = true; b.textContent = "Adding…";
+          const { data, error } = await MillerDB.createPersonDirect({ full_name: name });
+          if (error || !data) { b.disabled = false; b.textContent = "＋ Add to tree & link"; alert("Could not add: " + ((error && error.message) || "unknown error")); return; }
+          const r = await MillerDB.setMemberPerson(b.dataset.addtree, data.id);
+          if (r && r.error) alert("Added to the tree, but linking failed: " + r.error.message);
+          load();
+        }));
+
+      attachFilters();
 
       const gpCreate = document.getElementById("gp-create");
       if (gpCreate) gpCreate.addEventListener("click", async () => {

@@ -96,6 +96,15 @@
     async setRole(id, role) {
       return client.from("profiles").update({ role }).eq("id", id);
     },
+    // Admin/reviewer: create a bare tree person (no relations yet) and return its id.
+    async createPersonDirect(fields) {
+      const session = await this.getSession();
+      return client.from("persons").insert({
+        full_name: fields.full_name,
+        is_living: fields.is_living !== false,
+        created_by: session ? session.user.id : null,
+      }).select("id").single();
+    },
     async setStatus(id, status) {
       return client.from("profiles").update({ status }).eq("id", id);
     },
