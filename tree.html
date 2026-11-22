@@ -30,7 +30,8 @@
     .tree-header .doves { font-size:1.3rem; letter-spacing:.5rem; }
     .tree-header h1 { font-family:"Great Vibes",cursive; color:var(--gold); font-size:clamp(2rem,7vw,3.4rem); margin:.2rem 0 0; line-height:1; text-shadow:0 2px 10px rgba(0,0,0,.3); }
     .tree-header .tagline { font-family:"Cinzel",serif; letter-spacing:.08em; font-size:.78rem; color:#e9dcff; margin-top:.5rem; }
-    .families { padding:1.4rem 1rem 3rem; max-width:1120px; margin:0 auto; }
+    .families { padding:1.4rem clamp(.5rem,2vw,1.2rem) 3rem; max-width:1600px; margin:0 auto; }
+    body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; text-rendering:optimizeLegibility; }
     .family { margin:0 auto 2.6rem; }
     .ribbon { display:flex; align-items:center; justify-content:center; gap:.4rem; flex-wrap:wrap; margin:0 auto; max-width:640px;
       background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#3a2a00; border:2px solid #b9892a; border-radius:16px;
@@ -81,7 +82,7 @@
     body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.06;
       background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20200%20260'%3E%3Cg%20fill='%233B0A58'%3E%3Crect%20x='95'%20y='150'%20width='10'%20height='98'%20rx='4'/%3E%3Cpath%20d='M100%20200%20C72%20192%2062%20180%2058%20166'%20stroke='%233B0A58'%20stroke-width='6'%20fill='none'/%3E%3Cpath%20d='M100%20190%20C128%20182%20138%20170%20142%20156'%20stroke='%233B0A58'%20stroke-width='6'%20fill='none'/%3E%3Ccircle%20cx='100'%20cy='92'%20r='58'/%3E%3Ccircle%20cx='55'%20cy='120'%20r='40'/%3E%3Ccircle%20cx='145'%20cy='120'%20r='40'/%3E%3Ccircle%20cx='100'%20cy='58'%20r='42'/%3E%3C/g%3E%3C/svg%3E") no-repeat center 14vh;
       background-size:min(560px,86vw) auto; }
-    .node__name { font-family:"Cinzel",serif; }
+    .node__name { font-family:"Cinzel",serif; font-weight:700; letter-spacing:.01em; }
     .node__years { font-size:.68rem; color:#7a6a8a; }
     .node.dec .node__name::after { content:" ✝"; color:#b98bdd; font-size:.75em; }
     /* couple names on the gold ribbon */
@@ -99,7 +100,7 @@
     .desc li { margin:0; }
     .desc .desc { flex-basis:100%; margin-top:.2rem; margin-left:.5rem; border-left:2px dotted #d9c6ec; padding-left:.5rem; justify-content:flex-start; }
     .pill { background:#efe6f7; border:1px solid rgba(109,40,168,.25); border-radius:999px; padding:.2rem .55rem; }
-    .pill .node__name { font-size:.8rem; color:var(--purple-800); }
+    .pill .node__name { font-size:.86rem; font-weight:700; color:#34104f; }
     .pill .node__photo { width:22px; height:22px; }
 
     /* ---- Spouses / exes: current spouse sits next to the person; other ---- */
@@ -171,6 +172,15 @@
     const EXPANDED = new Set();   // person ids whose collapsed sub-tree is expanded inline
     let DRILLABLE_IDS = new Set(); // person ids rendered with a hidden sub-tree — clicking their name opens it
     function drillTo(id) { HISTORY.push(DRILL); DRILL = id; renderTree(); window.scrollTo(0, 0); }
+    // After an inline expand/collapse re-render, keep the view anchored on that person's
+    // card (both the horizontal column scroll and the page), so you don't have to scroll back.
+    function scrollToPerson(id) {
+      try {
+        const sel = (window.CSS && CSS.escape) ? CSS.escape(id) : id;
+        const el = document.querySelector('.node[data-id="' + sel + '"]');
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: "center", inline: "center" });
+      } catch (_) {}
+    }
     function drillBack() { DRILL = HISTORY.length ? HISTORY.pop() : null; renderTree(); window.scrollTo(0, 0); }
 
     // ---- Online-now avatars on tree nodes ----
@@ -611,9 +621,9 @@
       const bk = e.target.closest(".treeback");
       if (bk) { drillBack(); return; }
       const ex = e.target.closest("[data-expand]");
-      if (ex) { EXPANDED.add(ex.dataset.expand); const y = window.scrollY; renderTree(); window.scrollTo(0, y); return; }
+      if (ex) { const id = ex.dataset.expand; EXPANDED.add(id); renderTree(); scrollToPerson(id); return; }
       const co = e.target.closest("[data-collapse]");
-      if (co) { EXPANDED.delete(co.dataset.collapse); const y = window.scrollY; renderTree(); window.scrollTo(0, y); return; }
+      if (co) { const id = co.dataset.collapse; EXPANDED.delete(id); renderTree(); scrollToPerson(id); return; }
       const add = e.target.closest(".addkid");
       if (add) { e.preventDefault(); return openAddChild(BYID[add.dataset.p], add.dataset.co || ""); }
       const n = e.target.closest(".node");

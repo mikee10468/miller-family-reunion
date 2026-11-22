@@ -61,9 +61,10 @@ window.MILLER_CONFIGURED = (function () {
     'html[data-theme="dark"] body{background:#160f1c !important;color:#e9def5 !important;}' +
     'html[data-theme="dark"] .card,html[data-theme="dark"] .branchcard{background:#241a2e !important;border-color:#3a2a46 !important;color:#e9def5 !important;}' +
     'html[data-theme="dark"] h1,html[data-theme="dark"] h2,html[data-theme="dark"] h3,html[data-theme="dark"] .card h2{color:#efe2ff !important;}' +
-    'html[data-theme="dark"] .meta,html[data-theme="dark"] .lede,html[data-theme="dark"] .empty,html[data-theme="dark"] .quiet,html[data-theme="dark"] .hint,html[data-theme="dark"] .who{color:#b9a9cb !important;}' +
+    'html[data-theme="dark"] .meta,html[data-theme="dark"] .lede,html[data-theme="dark"] .empty,html[data-theme="dark"] .quiet,html[data-theme="dark"] .hint,html[data-theme="dark"] .who{color:#cabedb !important;}' +
     'html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:#2c2138 !important;color:#e9def5 !important;border-color:#4a3a57 !important;}' +
-    'html[data-theme="dark"] .node.pill{background:#2c2138 !important;}html[data-theme="dark"] .pill .node__name{color:#e9def5 !important;}' +
+    'html[data-theme="dark"] .node.pill{background:#312542 !important;}html[data-theme="dark"] .pill .node__name{color:#f3ecff !important;font-weight:700 !important;}' +
+    'html[data-theme="dark"] .node__name,html[data-theme="dark"] .col__title,html[data-theme="dark"] .bc__name{color:#f3ecff !important;font-weight:700 !important;}' +
     'html[data-theme="dark"] .thread,html[data-theme="dark"] .panel{background:#1d1526 !important;}' +
     'html[data-theme="dark"] .m.them{background:#2c2138 !important;color:#e9def5 !important;}' +
     'html[data-theme="dark"] .nitem,html[data-theme="dark"] .fitem,html[data-theme="dark"] .row,html[data-theme="dark"] .list>.row{border-color:#3a2a46 !important;}' +
