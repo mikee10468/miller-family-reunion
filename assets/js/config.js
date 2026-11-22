@@ -70,7 +70,8 @@ window.MILLER_CONFIGURED = (function () {
     'html[data-theme="dark"] .cchip,html[data-theme="dark"] .tab,html[data-theme="dark"] .cat,html[data-theme="dark"] .nchip,html[data-theme="dark"] .toggle button{background:#2c2138 !important;color:#e9def5 !important;}' +
     'html[data-theme="dark"] .tab.active,html[data-theme="dark"] .cchip.on,html[data-theme="dark"] .toggle button.on{background:linear-gradient(180deg,#6d28a8,#3b0a58) !important;color:#fff !important;}' +
     'html[data-theme="dark"] option{background:#2c2138;color:#e9def5;}' +
-    'html[data-theme="dark"] .subbanner,html[data-theme="dark"] .col__title,html[data-theme="dark"] .scrollhint,html[data-theme="dark"] .momtag,html[data-theme="dark"] .badge,html[data-theme="dark"] .role-chip,html[data-theme="dark"] .subtreebtn{color:#cdbbe0 !important;}' +
+    'html[data-theme="dark"] .subbanner,html[data-theme="dark"] .col__title,html[data-theme="dark"] .scrollhint,html[data-theme="dark"] .momtag,html[data-theme="dark"] .badge,html[data-theme="dark"] .role-chip{color:#cdbbe0 !important;}' +
+    'html[data-theme="dark"] .subtreebtn{background:#2c2138 !important;color:#d7bbf5 !important;border-color:#6d4a8a !important;}' +
     'html[data-theme="dark"] .desc li,html[data-theme="dark"] .col__title{color:#e9def5 !important;}' +
     'html[data-theme="dark"] .btn--outline{color:#d7bbf5 !important;border-color:#6d4a8a !important;}' +
     'html[data-theme="dark"] .filterbar input,html[data-theme="dark"] .treesearch{background:#2c2138 !important;color:#e9def5 !important;border-color:#4a3a57 !important;}' +

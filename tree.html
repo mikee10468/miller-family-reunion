@@ -61,6 +61,7 @@
     .subtreewrap { margin:.2rem 0 .4rem; }
     .subtreebtn { background:#efe6f7; border:1px dashed var(--purple-600); color:#5a1e8c; border-radius:10px; padding:.3rem .7rem; font-family:"Cinzel",serif; font-size:.78rem; cursor:pointer; }
     .subtreebtn:hover { background:#e6d6f7; }
+    .subtreebtn.drill { background:transparent; border-style:solid; color:#6d28a8; margin-left:.2rem; }
     .branchgrid { display:flex; flex-wrap:wrap; gap:.8rem; justify-content:center; margin:1rem 0; }
     .branchcard { flex:1 1 200px; max-width:260px; min-width:160px; background:#fff; border:1px solid rgba(109,40,168,.18); border-radius:14px;
       box-shadow:var(--shadow); padding:1rem; cursor:pointer; text-align:center; display:flex; flex-direction:column; align-items:center; gap:.3rem; font:inherit; transition:transform .1s, border-color .1s; }
@@ -166,6 +167,7 @@
     let VIEW = "condensed";
     try { VIEW = localStorage.getItem("millerTreeView") || "condensed"; } catch (_) {}
     let DRILL = null;   // in condensed view: the branch (root person) being viewed, or null for the overview
+    const EXPANDED = new Set();   // person ids whose collapsed sub-tree is expanded inline
 
     // ---- Online-now avatars on tree nodes ----
     let ONLINE = new Set();       // tree person_ids whose member is active now
@@ -318,9 +320,13 @@
     // Show this many generations per view; deeper branches collapse into drillable sub-trees.
     const MAXGEN = 3;
     function subtreeButton(id) {
-      const p = BYID[id];
-      return '<div class="subtreewrap"><button class="subtreebtn" data-subtree="' + id + '">▸ Open ' +
-        esc(firstName(displayName(p))) + "’s sub-tree (" + descendantCount(id) + " below)</button></div>";
+      return '<button class="subtreebtn drill" data-subtree="' + id + '">⤢ Open full branch</button>';
+    }
+    function expandToggle(id, expanded) {
+      const p = BYID[id], n = (CHILDREN[id] || []).length;
+      return expanded
+        ? '<button class="subtreebtn" data-collapse="' + id + '">– Hide ' + esc(firstName(displayName(p))) + "’s children</button>"
+        : '<button class="subtreebtn" data-expand="' + id + '">＋ Show ' + esc(firstName(displayName(p))) + "’s children (" + n + ")</button>";
     }
 
     function personNode(p, variant) {
@@ -408,13 +414,17 @@
         const skp = primarySpouse(k.id); const sp = skp ? BYID[skp.id] : null; if (sp) rendered[sp.id] = 1;
         let deeper;
         if (gen >= MAXGEN) {
-          // collapse this person's descendants into a drillable sub-tree (mark them rendered so
-          // they don't fall into "Other family members")
-          if ((CHILDREN[k.id] || []).length) {
+          if (!(CHILDREN[k.id] || []).length) {
+            deeper = "";
+          } else if (EXPANDED.has(k.id)) {
+            // expanded inline: show the next generation right here (one level at a time)
+            deeper = '<div class="subtreewrap">' + expandToggle(k.id, true) + " " + subtreeButton(k.id) + "</div>" + kidsList(k.id, seen, gen + 1);
+          } else {
+            // collapsed: mark descendants rendered so they don't fall into "Other family members"
             const d = descendantsOf(k.id);
             for (const id in d) { rendered[id] = 1; const kk = BYID[id]; if (kk) { if (kk.father_id) rendered[kk.father_id] = 1; if (kk.mother_id) rendered[kk.mother_id] = 1; } }
-            deeper = subtreeButton(k.id);
-          } else deeper = "";
+            deeper = '<div class="subtreewrap">' + expandToggle(k.id, false) + " " + subtreeButton(k.id) + "</div>";
+          }
         } else {
           deeper = kidsList(k.id, seen, gen + 1);
         }
@@ -599,6 +609,10 @@
       if (bk) { DRILL = null; renderTree(); window.scrollTo(0, 0); return; }
       const st = e.target.closest("[data-subtree]");
       if (st) { DRILL = st.dataset.subtree; renderTree(); window.scrollTo(0, 0); return; }
+      const ex = e.target.closest("[data-expand]");
+      if (ex) { EXPANDED.add(ex.dataset.expand); const y = window.scrollY; renderTree(); window.scrollTo(0, y); return; }
+      const co = e.target.closest("[data-collapse]");
+      if (co) { EXPANDED.delete(co.dataset.collapse); const y = window.scrollY; renderTree(); window.scrollTo(0, y); return; }
       const add = e.target.closest(".addkid");
       if (add) { e.preventDefault(); return openAddChild(BYID[add.dataset.p], add.dataset.co || ""); }
       const n = e.target.closest(".node");
