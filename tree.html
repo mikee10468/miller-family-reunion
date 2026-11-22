@@ -309,6 +309,8 @@
 
     const rendered = {};
     const firstName = (n) => String(n || "").split(" ")[0];
+    // A person's tree label: their nickname (if they chose to show it) else full name.
+    const displayName = (p) => (p && p.show_nickname && p.nickname) ? p.nickname : (p ? (p.full_name || "") : "");
 
     function personNode(p, variant) {
       const dec = p.is_living === false ? " dec" : "";
@@ -316,16 +318,16 @@
       const yrs = yearsLine(p);
       if (variant === "ribbon") {
         return '<button class="node' + dec + '" data-id="' + p.id + '">' + photo +
-          '<span class="node__name">' + esc(p.full_name) + "</span></button>";
+          '<span class="node__name">' + esc(displayName(p)) + "</span></button>";
       }
       if (variant === "heart") {
         return '<button class="node heart' + dec + '" data-id="' + p.id + '">' + photo +
-          '<span class="node__name">' + esc(p.full_name) + "</span>" +
+          '<span class="node__name">' + esc(displayName(p)) + "</span>" +
           (yrs ? '<span class="node__years">' + yrs + "</span>" : "") + "</button>";
       }
       // pill
       return '<button class="node pill' + dec + '" data-id="' + p.id + '">' + photo +
-        '<span class="node__name">' + esc(p.full_name) + "</span></button>";
+        '<span class="node__name">' + esc(displayName(p)) + "</span></button>";
     }
 
     // Compact card for a founding family in the condensed overview.
@@ -333,7 +335,7 @@
       const sp = primarySpouse(r.id);
       const count = descendantCount(r.id);
       const photo = PHOTO[r.id] ? '<img class="bc__photo" src="' + PHOTO[r.id] + '" alt="" />' : '<span class="bc__photo bc__noimg">🌳</span>';
-      const names = esc(r.full_name) + (sp ? " &amp; " + esc(sp.full_name) : "");
+      const names = esc(displayName(r)) + (sp ? " &amp; " + esc(displayName(sp)) : "");
       return '<button class="branchcard" data-drill="' + r.id + '">' + photo +
         '<span class="bc__name">' + names + "</span>" +
         '<span class="bc__count">' + count + " descendant" + (count === 1 ? "" : "s") + "</span>" +
@@ -414,7 +416,7 @@
           personNode(child, "heart") +
           (spouse ? '<div class="col__spouse"><span class="amp">♥</span> ' + personNode(spouse, "pill") + statusBadge(kp.status) + "</div>" : "") +
         "</div>" +
-        '<div class="col__body"><div class="col__title">' + esc(firstName(child.full_name)) + "'s children</div>" +
+        '<div class="col__body"><div class="col__title">' + esc(firstName(displayName(child))) + "'s children</div>" +
           body +
         "</div></div>";
     }
@@ -435,7 +437,7 @@
       let html = '<div class="family">' + coupleRibbon(rootId, primaryId, kp ? kp.status : null);
       if (kids.length) {
         html += '<div class="subbanner"><span>' + (spouse
-          ? esc(firstName(root.full_name)) + " &amp; " + esc(firstName(spouse.full_name)) + "’s " + kids.length + (kids.length === 1 ? " child" : " children")
+          ? esc(firstName(displayName(root))) + " &amp; " + esc(firstName(displayName(spouse))) + "’s " + kids.length + (kids.length === 1 ? " child" : " children")
           : "Their " + kids.length + (kids.length === 1 ? " child" : " children")) + "</span></div>";
         html += kids.length > 3 ? '<div class="scrollhint">← swipe sideways to see all ' + kids.length + " →</div>" : "";
         html += '<div class="cols">' + kids.map((k) => columnFor(k.id, rootId, primaryId)).join("") + "</div>";
@@ -649,7 +651,11 @@
     function personFields(prefill) {
       prefill = prefill || {};
       const g = prefill.gender || "";
-      return '<label class="field"><span>Full name</span><input name="full_name" value="' + esc(prefill.full_name || "") + '" required /></label>' +
+      return '<label class="field"><span>Full name (first &amp; last)</span><input name="full_name" value="' + esc(prefill.full_name || "") + '" required /></label>' +
+        '<label class="field"><span>Nickname (optional)</span><input name="nickname" value="' + esc(prefill.nickname || "") + '" placeholder="e.g. Bud, Junior" /></label>' +
+        '<label class="field"><span>Show on the tree as</span><select name="show_nickname">' +
+          '<option value="false"' + (prefill.show_nickname ? "" : " selected") + ">Full name</option>" +
+          '<option value="true"' + (prefill.show_nickname ? " selected" : "") + ">Nickname</option></select></label>" +
         '<label class="field"><span>Birth date (DD/MM/YYYY)</span><input name="birth_date_str" inputmode="numeric" value="' + esc(MillerDB.fmtDate(prefill.birth_year, prefill.birth_month, prefill.birth_day)) + '" placeholder="e.g. 16/04/1975" /></label>' +
         '<label class="field"><span>Death date (DD/MM/YYYY — or just a year if the day & month are unknown)</span><input name="death_date_str" inputmode="numeric" value="' + esc(MillerDB.fmtDate(prefill.death_year, prefill.death_month, prefill.death_day)) + '" placeholder="(if applicable)" /></label>' +
         '<label class="field"><span>Maiden name (optional)</span><input name="maiden_name" value="' + esc(prefill.maiden_name || "") + '" /></label>' +
@@ -666,6 +672,9 @@
       const out = {};
       ["full_name","maiden_name","gender","notes"].forEach(k => { if (d[k] !== undefined && d[k] !== "") out[k] = d[k].trim(); });
       out.is_living = d.is_living === "false" ? false : true;
+      // Nickname + display choice: always sent so a nickname can be set, changed, or cleared.
+      out.nickname = (d.nickname || "").trim();
+      out.show_nickname = d.show_nickname === "true" ? "true" : "false";
       // Birth / death dates: MM/DD/YYYY (or year-only). Year drives the month/day
       // keys so an edit that supplies a date fully controls them (see approve_submission).
       const b = MillerDB.parseDateStr(d.birth_date_str);

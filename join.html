@@ -53,7 +53,7 @@
         <p class="lede">Welcome to the Miller family hub — our family tree, photos, reunion plans, messages, and chat, all in one place.
           Create your free account below using the invite code you were sent. It only takes a minute.</p>
         <div class="note" id="codenote">Enter the invite code from your text message to get started. Guest codes are valid for 7 days.</div>
-        <label class="field"><span>Your full name</span><input id="f-name" type="text" autocomplete="name" placeholder="e.g. Jordan Miller" /></label>
+        <label class="field"><span>Your first and last name</span><input id="f-name" type="text" autocomplete="name" placeholder="e.g. Jordan Miller" /></label>
         <label class="field"><span>Email address</span><input id="f-email" type="email" autocomplete="email" placeholder="you@example.com" /></label>
         <label class="field"><span>Create a password (at least 8 characters)</span><input id="f-pass" type="password" autocomplete="new-password" minlength="8" /></label>
         <label class="field"><span>Confirm password</span><input id="f-pass2" type="password" autocomplete="new-password" minlength="8" /></label>
@@ -179,6 +179,7 @@
       email_invalid: "Please enter a valid email address.",
       password_short: "Your password must be at least 8 characters.",
       name_required: "Please enter your name.",
+      last_name_required: "Please enter both your first and last name.",
       email_exists: "That email already has an account. Please use Sign In instead.",
     };
 
@@ -191,6 +192,7 @@
       const password2 = $("f-pass2").value;
       const code = $("f-code").value.trim();
       if (!full_name) { msg.textContent = ERRORS.name_required; msg.className = "msg err"; return; }
+      if (!/\S+\s+\S/.test(full_name)) { msg.textContent = ERRORS.last_name_required; msg.className = "msg err"; return; }
       if (!/^\S+@\S+\.\S+$/.test(email)) { msg.textContent = ERRORS.email_invalid; msg.className = "msg err"; return; }
       if (password.length < 8) { msg.textContent = ERRORS.password_short; msg.className = "msg err"; return; }
       if (password !== password2) { msg.textContent = "Those two passwords don't match."; msg.className = "msg err"; return; }
