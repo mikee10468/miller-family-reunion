@@ -314,6 +314,108 @@
       return client.from("death_notices").delete().eq("id", id);
     },
 
+    /* ---- Multi-event model: events + per-event rsvp / potluck / volunteer ---- */
+    async listEvents() {
+      return client.from("events").select("*")
+        .order("kind", { ascending: true })
+        .order("event_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
+    },
+    async createEvent(ev) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      return client.from("events").insert({
+        kind: ev.kind,
+        title: ev.title,
+        event_date: ev.event_date || null,
+        start_time: ev.start_time || null,
+        location: ev.location || null,
+        details: ev.details || null,
+        rsvp_enabled: ev.rsvp_enabled !== false,
+        potluck_enabled: ev.potluck_enabled !== false,
+        volunteer_enabled: ev.volunteer_enabled !== false,
+        baby_name: ev.baby_name || null,
+        birth_date: ev.birth_date || null,
+        parents: ev.parents || null,
+        born_date: ev.born_date || null,
+        death_date: ev.death_date || null,
+        service_at: ev.service_at || null,
+        service_location: ev.service_location || null,
+        burial_location: ev.burial_location || null,
+        eulogy: ev.eulogy || null,
+        created_by: session.user.id,
+        created_by_name: (profile && (profile.full_name || profile.email)) || "A family member",
+      }).select("id").single();
+    },
+    async deleteEvent(id) {
+      return client.from("events").delete().eq("id", id);
+    },
+    async listEventRsvps(eventId) {
+      return client.from("event_rsvps").select("*").eq("event_id", eventId);
+    },
+    async getMyEventRsvp(eventId) {
+      const session = await this.getSession();
+      if (!session) return null;
+      const { data } = await client.from("event_rsvps").select("*")
+        .eq("event_id", eventId).eq("member_id", session.user.id).maybeSingle();
+      return data || null;
+    },
+    async saveEventRsvp(eventId, { attending, guest_count, note }) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      return client.from("event_rsvps").upsert({
+        event_id: eventId,
+        member_id: session.user.id,
+        member_name: (profile && (profile.full_name || profile.email)) || "A family member",
+        attending: !!attending,
+        guest_count: Math.max(0, parseInt(guest_count, 10) || 0),
+        note: note || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "event_id,member_id" });
+    },
+    async listEventContributions(eventId) {
+      return client.from("event_contributions").select("*").eq("event_id", eventId)
+        .order("category", { ascending: true }).order("created_at", { ascending: true });
+    },
+    async addEventContribution(eventId, { item, category, note }) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      return client.from("event_contributions").insert({
+        event_id: eventId,
+        owner_id: session.user.id,
+        owner_name: (profile && (profile.full_name || profile.email)) || "A family member",
+        item, category: category || "food", note: note || null,
+      });
+    },
+    async deleteEventContribution(id) {
+      return client.from("event_contributions").delete().eq("id", id);
+    },
+    async listEventVolunteerRoles(eventId) {
+      return client.from("event_volunteer_roles").select("*").eq("event_id", eventId).order("sort", { ascending: true });
+    },
+    async addEventVolunteerRole(eventId, { name, description }) {
+      return client.from("event_volunteer_roles").insert({ event_id: eventId, name, description: description || null, sort: 99 });
+    },
+    async deleteEventVolunteerRole(id) {
+      return client.from("event_volunteer_roles").delete().eq("id", id);
+    },
+    async listEventVolunteerSignups(roleIds) {
+      if (!roleIds || !roleIds.length) return { data: [] };
+      return client.from("event_volunteer_signups").select("*").in("role_id", roleIds);
+    },
+    async signupEventVolunteer(roleId) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      return client.from("event_volunteer_signups").insert({
+        role_id: roleId, member_id: session.user.id,
+        member_name: (profile && (profile.full_name || profile.email)) || "A family member",
+      });
+    },
+    async withdrawEventVolunteer(roleId) {
+      const session = await this.getSession();
+      return client.from("event_volunteer_signups").delete().eq("role_id", roleId).eq("member_id", session.user.id);
+    },
+
     /* ---- Tree link: which tree person a member IS ---- */
     // A member claims their own node on the tree (enables posting).
     async setMyPerson(personId) {

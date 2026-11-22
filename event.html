@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Event · Miller Family</title>
+  <title>Events · Miller Family</title>
   <meta name="theme-color" content="#3B0A58" />
   <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
@@ -31,6 +31,9 @@
     .field input, .field select, .field textarea { width:100%; padding:.6rem .8rem; border-radius:10px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; }
     .row { display:flex; gap:.7rem; flex-wrap:wrap; align-items:flex-end; }
     .row .field { flex:1; min-width:120px; margin:0; }
+    .checks { display:flex; gap:1.1rem; flex-wrap:wrap; margin:.6rem 0; }
+    .checks label { font-family:Georgia,serif; font-size:.9rem; color:#3a2f45; display:inline-flex; gap:.35rem; align-items:center; }
+    .checks input { width:auto; }
     .toggle { display:inline-flex; border:1px solid var(--purple-600); border-radius:999px; overflow:hidden; }
     .toggle button { border:0; background:#fff; color:var(--purple-800); font:inherit; padding:.5rem 1.1rem; cursor:pointer; }
     .toggle button.on { background:var(--purple-600); color:#fff; }
@@ -41,9 +44,10 @@
     .item .del { background:transparent; border:0; color:#a33; cursor:pointer; font:inherit; font-size:.8rem; }
     .vrole { padding:.8rem 0; border-bottom:1px solid #f0eaf6; }
     .vrole:last-child { border-bottom:0; }
+    .vrole .rolehead { display:flex; justify-content:space-between; align-items:baseline; gap:.5rem; }
     .vrole h3 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0; font-size:1rem; }
+    .vrole .delrole { background:transparent; border:0; color:#a33; cursor:pointer; font:inherit; font-size:.75rem; }
     .vrole .desc { color:#6b5b7a; font-size:.85rem; margin:.1rem 0 .4rem; }
-    .vrole .names { font-size:.85rem; color:var(--purple-700,#5a1e8c); margin:.2rem 0; }
     .chiplist { display:flex; flex-wrap:wrap; gap:.3rem; margin:.3rem 0; }
     .nchip { background:#efe6f7; color:#5a1e8c; border-radius:999px; padding:.15rem .6rem; font-size:.78rem; }
     .empty { color:#6b5b7a; font-style:italic; font-size:.85rem; }
@@ -51,20 +55,24 @@
     .menu { padding:1rem 1.2rem; }
     .menu .field { margin:0; }
     .menu select { font-family:"Cinzel",serif; }
-    .nitem { border:1px solid rgba(109,40,168,.18); border-radius:12px; padding:.85rem 1rem; margin-top:.85rem; position:relative; }
-    .nitem h3 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 .2rem .15rem 0; font-size:1.08rem; }
-    .nitem .meta { color:#6b5b7a; font-size:.86rem; margin:.12rem 0; }
-    .nitem .body { font-size:.9rem; color:#3a2f45; white-space:pre-wrap; margin:.4rem 0; }
-    .nitem .sub { background:#f6f0fb; border-radius:10px; padding:.55rem .75rem; margin-top:.55rem; font-size:.86rem; color:#4a3a58; }
-    .nitem .sub b { color:#5a1e8c; font-family:"Cinzel",serif; }
-    .nitem .eulogy { white-space:pre-wrap; font-style:italic; color:#473956; margin-top:.55rem; border-left:3px solid var(--gold,#caa24a); padding-left:.75rem; }
-    .nitem .del { position:absolute; top:.7rem; right:.8rem; background:transparent; border:0; color:#a33; cursor:pointer; font:inherit; font-size:.8rem; }
+    .ehead { background:linear-gradient(160deg,var(--purple-900),var(--purple-600)); color:#fff; border-radius:16px; padding:1.1rem 1.3rem; margin-bottom:1rem; position:relative; }
+    .ehead h2 { font-family:"Cinzel",serif; color:#fff; margin:0 0 .25rem; font-size:1.3rem; }
+    .ehead .meta { color:#e9dcff; font-size:.9rem; margin:.1rem 0; }
+    .ehead .del { position:absolute; top:.9rem; right:1rem; background:rgba(255,255,255,.16); border:0; color:#fff; border-radius:999px; padding:.3rem .75rem; cursor:pointer; font:inherit; font-size:.76rem; }
+    .tabs { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .tab { border:1px solid var(--purple-600); background:#fff; color:var(--purple-800); border-radius:999px; padding:.4rem .9rem; font-family:"Cinzel",serif; font-size:.82rem; cursor:pointer; }
+    .tab.on { background:var(--purple-600); color:#fff; }
     .subhead { font-family:"Cinzel",serif; color:var(--purple-600); font-size:.82rem; letter-spacing:.03em; margin:1.1rem 0 .2rem; }
+    .nitem { border:1px solid rgba(109,40,168,.18); border-radius:12px; padding:.75rem 1rem; margin-top:.7rem; }
+    .nitem h3 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 0 .15rem; font-size:1rem; }
+    .nitem .meta { color:#6b5b7a; font-size:.86rem; margin:.1rem 0; }
+    .body { font-size:.92rem; color:#3a2f45; white-space:pre-wrap; }
+    .eulogy { white-space:pre-wrap; font-style:italic; color:#473956; border-left:3px solid var(--gold,#caa24a); padding-left:.8rem; }
   </style>
 </head>
 <body>
   <div class="topbar">
-    <div><div class="script">Family & Friends Day</div><div class="sub">JULY 3, 2027 · MELLON PARK</div></div>
+    <div><div class="script">Family Events</div><div class="sub">THE MILLER FAMILY</div></div>
     <div><a class="home" href="tree.html">🌳 Tree</a> &nbsp; <a class="home" href="photos.html">📸 Photos</a> &nbsp; <a class="home" href="board.html">📝 Posts</a> &nbsp; <a class="home" href="chat.html">💬 Chat</a> &nbsp; <a class="home" href="login.html">Account</a></div>
   </div>
 
@@ -77,11 +85,11 @@
   <script>
     const wrap = document.getElementById("wrap");
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
-    let ME = null, MYRSVP = null, ATTEND = true;
-    // Which section of the Event menu is showing. Remembered across re-renders.
-    let CURRENT = (new URLSearchParams(location.search).get("s")) || "details";
+    let ME = null, EVENTS = [], ATTEND = true;
+    const qp = new URLSearchParams(location.search);
+    let CUR = qp.get("e") || null;   // event id, or "new-birth" / "new-death"
+    let SEC = qp.get("s") || "details";
 
-    // Dates in DD/MM/YYYY (matches the rest of the app); datetimes add the time.
     function fmtD(v) {
       if (!v) return "";
       const d = new Date(String(v).length <= 10 ? v + "T00:00:00" : v);
@@ -94,69 +102,97 @@
       if (isNaN(d)) return esc(v);
       return fmtD(v) + " · " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     }
-    const canDel = (row) => ME && (row.created_by === ME.id || ME.role === "admin");
+    const isAdmin = () => ME && ME.role === "admin";
+    const canManageEvent = (ev) => ME && (ev.created_by === ME.id || isAdmin());
+    const kindIcon = (k) => (k === "birth" ? "👶 " : k === "death" ? "🕊️ " : "🎉 ");
+    function syncUrl() { try { history.replaceState(null, "", "event.html?e=" + encodeURIComponent(CUR || "") + "&s=" + SEC); } catch (_) {} }
 
-    const SECTIONS = [
-      { group: "🎉 Family & Friends Day — Jul 3, 2027", items: [
-        { id: "details",   label: "📅 Event Details" },
-        { id: "rsvp",      label: "✅ RSVP" },
-        { id: "potluck",   label: "🥔 What I'm Bringing" },
-        { id: "volunteer", label: "🙌 Volunteer" },
-      ]},
-      { group: "👪 Family News", items: [
-        { id: "births", label: "👶 New Birth Notices" },
-        { id: "deaths", label: "🕊️ Death Notices" },
-      ]},
-    ];
-
-    async function loadAll() {
-      const [rsvps, contribs, roles, signups, births, deaths] = await Promise.all([
-        MillerDB.listRsvps(), MillerDB.listContributions(), MillerDB.listVolunteerRoles(), MillerDB.listVolunteerSignups(),
-        MillerDB.listBirthNotices(), MillerDB.listDeathNotices(),
-      ]);
-      return {
-        rsvps: rsvps.data || [], contribs: contribs.data || [], roles: roles.data || [], signups: signups.data || [],
-        births: births.data || [], deaths: deaths.data || [],
-      };
-    }
-
+    /* ---------- top menu: choose an event ---------- */
     function menuCard() {
-      const opts = SECTIONS.map((g) =>
-        '<optgroup label="' + esc(g.group) + '">' +
-        g.items.map((it) => '<option value="' + it.id + '"' + (CURRENT === it.id ? " selected" : "") + ">" + esc(it.label) + "</option>").join("") +
-        "</optgroup>").join("");
-      return '<div class="card menu"><label class="field"><span>Jump to</span>' +
+      const groups = [
+        { kind: "reunion", label: "🎉 Reunion", add: null },
+        { kind: "birth",   label: "👶 New Birth Notices", add: ["new-birth", "➕ Add a birth notice"] },
+        { kind: "death",   label: "🕊️ Death Notices",     add: ["new-death", "➕ Add a death notice"] },
+      ];
+      const opts = groups.map((g) => {
+        const evs = EVENTS.filter((e) => e.kind === g.kind);
+        let inner = evs.map((e) => '<option value="' + e.id + '"' + (CUR === e.id ? " selected" : "") + ">" +
+          esc(e.title) + (e.event_date ? " — " + esc(fmtD(e.event_date)) : "") + "</option>").join("");
+        if (g.add) inner += '<option value="' + g.add[0] + '"' + (CUR === g.add[0] ? " selected" : "") + ">" + esc(g.add[1]) + "</option>";
+        if (!inner) return "";
+        return '<optgroup label="' + esc(g.label) + '">' + inner + "</optgroup>";
+      }).join("");
+      return '<div class="card menu"><label class="field"><span>Choose an event</span>' +
         '<select id="nav">' + opts + "</select></label></div>";
     }
 
-    function detailsCard() {
-      return '<div class="card"><div class="eventline">📅 Saturday, July 3, 2027 · 12–8 PM<br>📍 Mellon Park, Pittsburgh PA 15206</div></div>';
+    /* ---------- event header + section tabs ---------- */
+    function dateLine(ev) {
+      const bits = [];
+      if (ev.event_date) bits.push("📅 " + fmtD(ev.event_date) + (ev.start_time ? " · " + esc(ev.start_time) : ""));
+      if (ev.location) bits.push("📍 " + esc(ev.location));
+      return bits.join("<br>");
+    }
+    function eventHeader(ev) {
+      let extra = "";
+      if (ev.kind === "birth") {
+        extra += ev.parents ? '<div class="meta">Parents: ' + esc(ev.parents) + "</div>" : "";
+        extra += ev.birth_date ? '<div class="meta">Born ' + esc(fmtD(ev.birth_date)) + "</div>" : "";
+      } else if (ev.kind === "death") {
+        if (ev.born_date || ev.death_date)
+          extra += '<div class="meta">' + esc(ev.born_date ? fmtD(ev.born_date) : "?") + " – " + esc(ev.death_date ? fmtD(ev.death_date) : "?") + "</div>";
+      }
+      const canDel = canManageEvent(ev) && ev.kind !== "reunion";
+      return '<div class="ehead">' +
+        (canDel ? '<button class="del" data-delevent="' + ev.id + '">🗑 delete</button>' : "") +
+        "<h2>" + kindIcon(ev.kind) + esc(ev.title) + "</h2>" + extra + "</div>";
+    }
+    function tabsHTML(ev) {
+      const tabs = [["details", "📅 Details"]];
+      if (ev.rsvp_enabled) tabs.push(["rsvp", "✅ RSVP"]);
+      if (ev.potluck_enabled) tabs.push(["potluck", "🥔 What I'm Bringing"]);
+      if (ev.volunteer_enabled) tabs.push(["volunteer", "🙌 Volunteer"]);
+      if (!tabs.some((t) => t[0] === SEC)) SEC = "details";
+      return '<div class="tabs">' + tabs.map((t) =>
+        '<button class="tab ' + (SEC === t[0] ? "on" : "") + '" data-tab="' + t[0] + '">' + t[1] + "</button>").join("") + "</div>";
     }
 
-    function headcount(rsvps) {
-      const coming = rsvps.filter((r) => r.attending);
-      const people = coming.reduce((n, r) => n + (r.guest_count || 0), 0);
-      return { households: coming.length, people };
+    /* ---------- sections ---------- */
+    function detailsSection(ev) {
+      let h = '<div class="card"><h2>Details</h2>';
+      const dl = dateLine(ev);
+      if (dl) h += '<div class="eventline" style="margin:.3rem 0 .6rem">' + dl + "</div>";
+      if (ev.details) h += '<p class="body">' + esc(ev.details) + "</p>";
+      if (ev.kind === "death") {
+        if (ev.burial_location) h += '<div class="nitem"><h3>🌹 Burial</h3><div class="meta">' + esc(ev.burial_location) + "</div></div>";
+        if (ev.eulogy) h += '<div class="subhead">EULOGY</div><div class="eulogy">' + esc(ev.eulogy) + "</div>";
+      }
+      if (!dl && !ev.details && !(ev.kind === "death" && (ev.burial_location || ev.eulogy))) h += '<p class="empty">No details added yet.</p>';
+      return h + "</div>";
     }
 
-    function rsvpCard() {
-      const a = MYRSVP ? MYRSVP.attending : true;
-      ATTEND = a;
-      const gc = MYRSVP ? MYRSVP.guest_count : 1;
-      const note = MYRSVP ? (MYRSVP.note || "") : "";
-      return '<div class="card"><h2>Will you be there?</h2>' +
-        '<p class="lede">Let the family know you\'re coming so we can plan.</p>' +
-        '<div class="toggle" id="att"><button data-a="1" class="' + (a ? "on" : "") + '">Yes, we\'re coming</button>' +
+    function headcount(list) {
+      const c = list.filter((r) => r.attending);
+      return { households: c.length, people: c.reduce((n, r) => n + (r.guest_count || 0), 0) };
+    }
+    function rsvpSection(ev, mine, list) {
+      const hc = headcount(list);
+      const a = mine ? mine.attending : true; ATTEND = a;
+      const gc = mine ? mine.guest_count : 1;
+      const note = mine ? (mine.note || "") : "";
+      return '<div class="banner"><b>' + hc.people + "</b> coming so far" +
+          (hc.households ? " · <b>" + hc.households + "</b> RSVPs" : "") + "</div>" +
+        '<div class="card"><h2>Will you be there?</h2>' +
+        '<div class="toggle" id="att"><button data-a="1" class="' + (a ? "on" : "") + '">Yes, I\'m coming</button>' +
           '<button data-a="0" class="' + (!a ? "on" : "") + '">Can\'t make it</button></div>' +
-        '<div class="row" style="margin-top:.9rem">' +
-          '<label class="field" id="gcf"><span>How many in your party (incl. you)?</span><input id="gc" type="number" min="0" value="' + esc(gc) + '" /></label>' +
-        "</div>" +
+        '<div class="row" style="margin-top:.9rem"><label class="field" id="gcf" style="opacity:' + (a ? "1" : ".4") + '">' +
+          '<span>How many in your party (incl. you)?</span><input id="gc" type="number" min="0" value="' + esc(gc) + '" /></label></div>' +
         '<label class="field"><span>Note (optional)</span><input id="rnote" type="text" maxlength="160" value="' + esc(note) + '" placeholder="e.g. arriving after 2pm" /></label>' +
         '<button class="btn btn--gold" id="savr">Save my RSVP</button><p class="msg" id="rmsg"></p></div>';
     }
 
-    function potluckCard(contribs) {
-      const cats = ["food","drink","dessert","supplies","other"];
+    function potluckSection(ev, contribs) {
+      const cats = ["food", "drink", "dessert", "supplies", "other"];
       let groups = "";
       cats.forEach((c) => {
         const items = contribs.filter((x) => x.category === c);
@@ -165,12 +201,11 @@
           items.map((x) =>
             '<div class="item"><div><strong>' + esc(x.item) + "</strong>" + (x.note ? ' <span class="who">— ' + esc(x.note) + "</span>" : "") +
             '<div class="who">by ' + esc(x.owner_name || "a family member") + "</div></div>" +
-            (x.owner_id === ME.id || ME.role === "admin" ? '<button class="del" data-delc="' + x.id + '">remove</button>' : "") +
-            "</div>"
-          ).join("") + "</div>";
+            (x.owner_id === ME.id || isAdmin() ? '<button class="del" data-delc="' + x.id + '">remove</button>' : "") +
+            "</div>").join("") + "</div>";
       });
       return '<div class="card"><h2>What I\'m Bringing</h2>' +
-        '<p class="lede">Claim a dish or supplies so we don\'t end up with ten potato salads. 🥔</p>' +
+        '<p class="lede">Claim a dish or supplies so we don\'t double up. 🥔</p>' +
         '<div class="row">' +
           '<label class="field" style="flex:0 0 130px"><span>Category</span><select id="ccat">' +
             cats.map((c) => '<option value="' + c + '">' + c + "</option>").join("") + "</select></label>" +
@@ -178,175 +213,135 @@
           '<label class="field"><span>Note</span><input id="cnote" type="text" maxlength="80" placeholder="(optional)" /></label>' +
         "</div>" +
         '<button class="btn btn--gold" id="addc">Add to the list</button><p class="msg" id="cmsg"></p>' +
-        (groups || '<p class="empty" style="margin-top:1rem">Nothing on the list yet — add the first dish!</p>') +
-        "</div>";
+        (groups || '<p class="empty" style="margin-top:1rem">Nothing on the list yet — add the first item!</p>') + "</div>";
     }
 
-    function volunteerCard(roles, signups) {
+    function volunteerSection(ev, roles, signups) {
       const byRole = {};
       signups.forEach((s) => (byRole[s.role_id] = byRole[s.role_id] || []).push(s));
       const rows = roles.map((r) => {
         const sgn = byRole[r.id] || [];
         const mine = sgn.some((s) => s.member_id === ME.id);
         const names = sgn.length ? '<div class="chiplist">' + sgn.map((s) => '<span class="nchip">' + esc(s.member_name || "Member") + "</span>").join("") + "</div>" : '<div class="empty">No volunteers yet</div>';
-        return '<div class="vrole"><h3>' + esc(r.name) + "</h3>" +
+        return '<div class="vrole"><div class="rolehead"><h3>' + esc(r.name) + "</h3>" +
+          (canManageEvent(ev) ? '<button class="delrole" data-delrole="' + r.id + '">remove role</button>' : "") + "</div>" +
           (r.description ? '<div class="desc">' + esc(r.description) + "</div>" : "") + names +
           '<button class="btn btn--sm ' + (mine ? "btn--outline" : "btn--gold") + '" data-vol="' + r.id + '" data-mine="' + (mine ? "1" : "0") + '">' +
             (mine ? "✓ I'm signed up — withdraw" : "I'll help") + "</button></div>";
       }).join("");
-      return '<div class="card"><h2>Volunteer</h2><p class="lede">Many hands make a great reunion. Sign up to help with:</p>' + rows + "</div>";
+      const addRole = canManageEvent(ev) ?
+        '<div class="subhead">ADD A ROLE</div><div class="row">' +
+          '<label class="field"><span>Role name</span><input id="rolename" type="text" maxlength="60" placeholder="e.g. Photographer" /></label>' +
+          '<label class="field"><span>Description</span><input id="roledesc" type="text" maxlength="120" placeholder="(optional)" /></label>' +
+        '</div><button class="btn btn--outline btn--sm" id="addrole">Add role</button><p class="msg" id="rolemsg"></p>' : "";
+      return '<div class="card"><h2>Volunteer</h2><p class="lede">Many hands make a great gathering. Sign up to help with:</p>' +
+        (rows || '<p class="empty">No roles yet.</p>') + addRole + "</div>";
     }
 
-    function birthsCard(births) {
-      const list = births.length ? births.map((b) => {
-        const shower = (b.shower_at || b.shower_location || b.shower_note)
-          ? '<div class="sub"><b>🎉 Baby shower</b><br>' +
-              (b.shower_at ? "When: " + esc(fmtDT(b.shower_at)) + "<br>" : "") +
-              (b.shower_location ? "Where: " + esc(b.shower_location) + "<br>" : "") +
-              (b.shower_note ? esc(b.shower_note) : "") + "</div>"
-          : "";
-        return '<div class="nitem">' +
-          (canDel(b) ? '<button class="del" data-delbirth="' + b.id + '">remove</button>' : "") +
-          "<h3>👶 " + esc(b.baby_name) + "</h3>" +
-          (b.birth_date ? '<div class="meta">Born ' + esc(fmtD(b.birth_date)) + "</div>" : "") +
-          (b.parents ? '<div class="meta">Parents: ' + esc(b.parents) + "</div>" : "") +
-          (b.details ? '<div class="body">' + esc(b.details) + "</div>" : "") +
-          shower +
-          '<div class="meta" style="margin-top:.4rem;font-size:.78rem">Posted by ' + esc(b.created_by_name || "a family member") + "</div>" +
-          "</div>";
-      }).join("") : '<p class="empty" style="margin-top:1rem">No birth announcements yet. Share your happy news! 💕</p>';
-      return '<div class="card"><h2>👶 New Birth Notices</h2>' +
-        '<p class="lede">Welcome the newest Millers — and share baby-shower details if there\'s one planned.</p>' +
-        '<label class="field"><span>Baby\'s name *</span><input id="bname" type="text" maxlength="80" placeholder="e.g. Ava Rose Miller" /></label>' +
+    /* ---------- create-event forms ---------- */
+    function sectionChecks() {
+      return '<div class="subhead">SECTIONS FOR THIS EVENT</div><div class="checks">' +
+        '<label><input type="checkbox" id="en_rsvp" checked /> RSVP</label>' +
+        '<label><input type="checkbox" id="en_potluck" checked /> What I\'m Bringing</label>' +
+        '<label><input type="checkbox" id="en_volunteer" checked /> Volunteer</label></div>';
+    }
+    function createForm(kind) {
+      if (kind === "birth") {
+        return '<div class="card"><h2>👶 Add a Birth Notice</h2>' +
+          '<p class="lede">Welcome the newest Miller. This becomes its own event — add baby-shower details and the family can RSVP, bring things, and volunteer.</p>' +
+          '<label class="field"><span>Baby\'s name *</span><input id="f_baby" type="text" maxlength="80" placeholder="e.g. Ava Rose Miller" /></label>' +
+          '<div class="row">' +
+            '<label class="field"><span>Date of birth</span><input id="f_bdate" type="date" /></label>' +
+            '<label class="field"><span>Parents</span><input id="f_parents" type="text" maxlength="120" placeholder="e.g. John & Maria Miller" /></label>' +
+          "</div>" +
+          '<label class="field"><span>Details (weight, length, a note…)</span><textarea id="f_details" rows="2" maxlength="600"></textarea></label>' +
+          '<div class="subhead">BABY SHOWER / GATHERING (optional)</div>' +
+          '<div class="row">' +
+            '<label class="field"><span>Date</span><input id="f_date" type="date" /></label>' +
+            '<label class="field"><span>Time</span><input id="f_time" type="text" maxlength="40" placeholder="e.g. 2:00 PM" /></label>' +
+          "</div>" +
+          '<label class="field"><span>Location</span><input id="f_loc" type="text" maxlength="160" placeholder="e.g. Grandma\'s house" /></label>' +
+          sectionChecks() +
+          '<button class="btn btn--gold" id="createev">Create birth event</button><p class="msg" id="createmsg"></p></div>';
+      }
+      return '<div class="card"><h2>🕊️ Add a Death Notice</h2>' +
+        '<p class="lede">Honor a loved one. This becomes its own event with service, burial, and eulogy details — and the family can RSVP, bring food, and volunteer.</p>' +
+        '<label class="field"><span>Name *</span><input id="f_name" type="text" maxlength="100" placeholder="e.g. Loyd Miller Sr." /></label>' +
         '<div class="row">' +
-          '<label class="field"><span>Date of birth</span><input id="bdate" type="date" /></label>' +
-          '<label class="field"><span>Parents</span><input id="bparents" type="text" maxlength="120" placeholder="e.g. John & Maria Miller" /></label>' +
+          '<label class="field"><span>Born</span><input id="f_born" type="date" /></label>' +
+          '<label class="field"><span>Passed</span><input id="f_died" type="date" /></label>' +
         "</div>" +
-        '<label class="field"><span>Details (weight, length, a note…)</span><textarea id="bdetails" rows="2" maxlength="600"></textarea></label>' +
-        '<div class="subhead">BABY SHOWER (optional)</div>' +
+        '<div class="subhead">SERVICE / GATHERING</div>' +
         '<div class="row">' +
-          '<label class="field"><span>Date &amp; time</span><input id="bshowerat" type="datetime-local" /></label>' +
-          '<label class="field"><span>Location</span><input id="bshowerloc" type="text" maxlength="160" placeholder="e.g. Grandma\'s house" /></label>' +
+          '<label class="field"><span>Date</span><input id="f_date" type="date" /></label>' +
+          '<label class="field"><span>Time</span><input id="f_time" type="text" maxlength="40" placeholder="e.g. 11:00 AM" /></label>' +
         "</div>" +
-        '<label class="field"><span>Shower note</span><input id="bshowernote" type="text" maxlength="200" placeholder="(registry link, RSVP by…)" /></label>' +
-        '<button class="btn btn--gold" id="addbirth">Post birth notice</button><p class="msg" id="bmsg"></p>' +
-        list + "</div>";
+        '<label class="field"><span>Service location</span><input id="f_loc" type="text" maxlength="200" placeholder="Funeral home / church" /></label>' +
+        '<label class="field"><span>Burial / resting place</span><input id="f_burial" type="text" maxlength="200" placeholder="Cemetery name & location" /></label>' +
+        '<label class="field"><span>Eulogy (optional)</span><textarea id="f_eulogy" rows="4" maxlength="4000" placeholder="A few words in their memory…"></textarea></label>' +
+        '<label class="field"><span>Other notes</span><textarea id="f_details" rows="2" maxlength="600"></textarea></label>' +
+        sectionChecks() +
+        '<button class="btn btn--gold" id="createev">Create memorial event</button><p class="msg" id="createmsg"></p></div>';
     }
 
-    function deathsCard(deaths) {
-      const list = deaths.length ? deaths.map((d) => {
-        const dates = [d.birth_date ? fmtD(d.birth_date) : null, d.death_date ? fmtD(d.death_date) : null];
-        const span = (dates[0] || dates[1]) ? '<div class="meta">' + esc(dates[0] || "?") + " – " + esc(dates[1] || "?") + "</div>" : "";
-        const service = (d.service_at || d.service_location)
-          ? '<div class="sub"><b>⚜️ Service</b><br>' +
-              (d.service_at ? "When: " + esc(fmtDT(d.service_at)) + "<br>" : "") +
-              (d.service_location ? "Where: " + esc(d.service_location) : "") + "</div>"
-          : "";
-        const burial = d.burial_location ? '<div class="sub"><b>🌹 Burial</b><br>' + esc(d.burial_location) + "</div>" : "";
-        return '<div class="nitem">' +
-          (canDel(d) ? '<button class="del" data-deldeath="' + d.id + '">remove</button>' : "") +
-          "<h3>🕊️ " + esc(d.person_name) + "</h3>" + span +
-          (d.details ? '<div class="body">' + esc(d.details) + "</div>" : "") +
-          service + burial +
-          (d.eulogy ? '<div class="eulogy">' + esc(d.eulogy) + "</div>" : "") +
-          '<div class="meta" style="margin-top:.4rem;font-size:.78rem">Posted by ' + esc(d.created_by_name || "a family member") + "</div>" +
-          "</div>";
-      }).join("") : '<p class="empty" style="margin-top:1rem">No notices here. 🤍</p>';
-      return '<div class="card"><h2>🕊️ Death Notices</h2>' +
-        '<p class="lede">Remember and honor those we\'ve lost, with service, burial, and eulogy details for the family.</p>' +
-        '<label class="field"><span>Name *</span><input id="dname" type="text" maxlength="100" placeholder="e.g. Loyd Miller Sr." /></label>' +
-        '<div class="row">' +
-          '<label class="field"><span>Born</span><input id="dborn" type="date" /></label>' +
-          '<label class="field"><span>Passed</span><input id="ddied" type="date" /></label>' +
-        "</div>" +
-        '<div class="subhead">SERVICE &amp; BURIAL</div>' +
-        '<div class="row">' +
-          '<label class="field"><span>Service date &amp; time</span><input id="dserviceat" type="datetime-local" /></label>' +
-          '<label class="field"><span>Service location</span><input id="dserviceloc" type="text" maxlength="200" placeholder="Funeral home / church" /></label>' +
-        "</div>" +
-        '<label class="field"><span>Burial / resting place</span><input id="dburial" type="text" maxlength="200" placeholder="Cemetery name & location" /></label>' +
-        '<label class="field"><span>Eulogy (optional)</span><textarea id="deulogy" rows="4" maxlength="4000" placeholder="A few words in their memory…"></textarea></label>' +
-        '<label class="field"><span>Other notes</span><textarea id="ddetails" rows="2" maxlength="600"></textarea></label>' +
-        '<button class="btn btn--gold" id="adddeath">Post notice</button><p class="msg" id="dmsg"></p>' +
-        list + "</div>";
-    }
-
+    /* ---------- render ---------- */
     async function render() {
-      const data = await loadAll();
       let html = menuCard();
-      if (CURRENT === "details") {
-        const hc = headcount(data.rsvps);
-        html += '<div class="banner"><b>' + hc.people + "</b> family &amp; friends coming so far" +
-          (hc.households ? " · <b>" + hc.households + "</b> households RSVP’d" : "") + "</div>" + detailsCard();
-      } else if (CURRENT === "rsvp") { html += rsvpCard(); }
-      else if (CURRENT === "potluck") { html += potluckCard(data.contribs); }
-      else if (CURRENT === "volunteer") { html += volunteerCard(data.roles, data.signups); }
-      else if (CURRENT === "births") { html += birthsCard(data.births); }
-      else if (CURRENT === "deaths") { html += deathsCard(data.deaths); }
+      if (CUR === "new-birth" || CUR === "new-death") {
+        html += createForm(CUR === "new-birth" ? "birth" : "death");
+        wrap.innerHTML = html; wireMenu(); wireCreate(CUR === "new-birth" ? "birth" : "death");
+        return;
+      }
+      const ev = EVENTS.find((e) => e.id === CUR);
+      if (!ev) { wrap.innerHTML = html + '<div class="card"><p class="empty">Choose an event from the menu above.</p></div>'; wireMenu(); return; }
+      html += eventHeader(ev) + tabsHTML(ev) + '<div id="sec"><div class="card"><p class="empty">Loading…</p></div></div>';
       wrap.innerHTML = html;
-      wire();
+      wireMenu(); wireHeader(); wireTabs(ev);
+      renderSection(ev);
     }
 
-    function wire() {
-      const toIso = (v) => (v ? new Date(v).toISOString() : null);
-      // Section menu
+    async function renderSection(ev) {
+      const sec = document.getElementById("sec");
+      if (!sec) return;
+      if (SEC === "details") { sec.innerHTML = detailsSection(ev); return; }
+      if (SEC === "rsvp") {
+        const [mine, list] = await Promise.all([MillerDB.getMyEventRsvp(ev.id), MillerDB.listEventRsvps(ev.id)]);
+        sec.innerHTML = rsvpSection(ev, mine, list.data || []); wireRsvp(ev); return;
+      }
+      if (SEC === "potluck") {
+        const items = await MillerDB.listEventContributions(ev.id);
+        sec.innerHTML = potluckSection(ev, items.data || []); wirePotluck(ev); return;
+      }
+      if (SEC === "volunteer") {
+        const roles = (await MillerDB.listEventVolunteerRoles(ev.id)).data || [];
+        const signups = (await MillerDB.listEventVolunteerSignups(roles.map((r) => r.id))).data || [];
+        sec.innerHTML = volunteerSection(ev, roles, signups); wireVolunteer(ev); return;
+      }
+    }
+
+    /* ---------- wiring ---------- */
+    function wireMenu() {
       const nav = document.getElementById("nav");
-      if (nav) nav.addEventListener("change", () => {
-        CURRENT = nav.value;
-        try { history.replaceState(null, "", "event.html?s=" + CURRENT); } catch (_) {}
-        render();
-      });
-
-      // Add birth notice
-      const addbirth = document.getElementById("addbirth");
-      if (addbirth) addbirth.addEventListener("click", async () => {
-        const baby_name = document.getElementById("bname").value.trim();
-        const m = document.getElementById("bmsg");
-        if (!baby_name) { m.textContent = "Please enter the baby's name."; m.className = "msg err"; return; }
-        m.textContent = "Posting…"; m.className = "msg";
-        const { error } = await MillerDB.addBirthNotice({
-          baby_name,
-          birth_date: document.getElementById("bdate").value || null,
-          parents: document.getElementById("bparents").value.trim(),
-          details: document.getElementById("bdetails").value.trim(),
-          shower_at: toIso(document.getElementById("bshowerat").value),
-          shower_location: document.getElementById("bshowerloc").value.trim(),
-          shower_note: document.getElementById("bshowernote").value.trim(),
-        });
-        if (error) { m.textContent = "Could not post: " + error.message; m.className = "msg err"; return; }
-        render();
-      });
-      wrap.querySelectorAll("[data-delbirth]").forEach((b) => b.addEventListener("click", async () => {
-        if (!confirm("Remove this birth notice?")) return;
-        await MillerDB.deleteBirthNotice(b.dataset.delbirth); render();
+      if (nav) nav.addEventListener("change", () => { CUR = nav.value; SEC = "details"; syncUrl(); render(); });
+    }
+    function wireHeader() {
+      wrap.querySelectorAll("[data-delevent]").forEach((b) => b.addEventListener("click", async () => {
+        if (!confirm("Delete this event and all its RSVPs, potluck and volunteer sign-ups? This can't be undone.")) return;
+        const { error } = await MillerDB.deleteEvent(b.dataset.delevent);
+        if (error) { alert("Could not delete: " + error.message); return; }
+        await loadEvents();
+        const fam = EVENTS.find((e) => e.kind === "reunion");
+        CUR = fam ? fam.id : (EVENTS[0] && EVENTS[0].id) || null; SEC = "details"; syncUrl(); render();
       }));
-
-      // Add death notice
-      const adddeath = document.getElementById("adddeath");
-      if (adddeath) adddeath.addEventListener("click", async () => {
-        const person_name = document.getElementById("dname").value.trim();
-        const m = document.getElementById("dmsg");
-        if (!person_name) { m.textContent = "Please enter a name."; m.className = "msg err"; return; }
-        m.textContent = "Posting…"; m.className = "msg";
-        const { error } = await MillerDB.addDeathNotice({
-          person_name,
-          birth_date: document.getElementById("dborn").value || null,
-          death_date: document.getElementById("ddied").value || null,
-          service_at: toIso(document.getElementById("dserviceat").value),
-          service_location: document.getElementById("dserviceloc").value.trim(),
-          burial_location: document.getElementById("dburial").value.trim(),
-          eulogy: document.getElementById("deulogy").value.trim(),
-          details: document.getElementById("ddetails").value.trim(),
-        });
-        if (error) { m.textContent = "Could not post: " + error.message; m.className = "msg err"; return; }
-        render();
-      });
-      wrap.querySelectorAll("[data-deldeath]").forEach((b) => b.addEventListener("click", async () => {
-        if (!confirm("Remove this notice?")) return;
-        await MillerDB.deleteDeathNotice(b.dataset.deldeath); render();
+    }
+    function wireTabs(ev) {
+      wrap.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+        SEC = b.dataset.tab; syncUrl();
+        wrap.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t === b));
+        renderSection(ev);
       }));
-
-      // RSVP toggle
+    }
+    function wireRsvp(ev) {
       wrap.querySelectorAll("#att button").forEach((b) => b.addEventListener("click", () => {
         ATTEND = b.dataset.a === "1";
         wrap.querySelectorAll("#att button").forEach((x) => x.classList.toggle("on", x === b));
@@ -357,12 +352,12 @@
         const gc = ATTEND ? (parseInt(document.getElementById("gc").value, 10) || 1) : 0;
         const note = document.getElementById("rnote").value.trim();
         const m = document.getElementById("rmsg"); m.textContent = "Saving…"; m.className = "msg";
-        const { error } = await MillerDB.saveRsvp({ attending: ATTEND, guest_count: gc, note });
+        const { error } = await MillerDB.saveEventRsvp(ev.id, { attending: ATTEND, guest_count: gc, note });
         if (error) { m.textContent = "Could not save: " + error.message; m.className = "msg err"; return; }
-        MYRSVP = await MillerDB.getMyRsvp();
-        render();
+        renderSection(ev);
       });
-
+    }
+    function wirePotluck(ev) {
       const addc = document.getElementById("addc");
       if (addc) addc.addEventListener("click", async () => {
         const item = document.getElementById("citem").value.trim();
@@ -371,22 +366,77 @@
         const m = document.getElementById("cmsg");
         if (!item) { m.textContent = "Please enter what you're bringing."; m.className = "msg err"; return; }
         m.textContent = "Adding…"; m.className = "msg";
-        const { error } = await MillerDB.addContribution({ item, category, note });
+        const { error } = await MillerDB.addEventContribution(ev.id, { item, category, note });
         if (error) { m.textContent = "Could not add: " + error.message; m.className = "msg err"; return; }
-        render();
+        renderSection(ev);
       });
-
       wrap.querySelectorAll("[data-delc]").forEach((b) => b.addEventListener("click", async () => {
-        await MillerDB.deleteContribution(b.dataset.delc); render();
+        await MillerDB.deleteEventContribution(b.dataset.delc); renderSection(ev);
       }));
-
+    }
+    function wireVolunteer(ev) {
       wrap.querySelectorAll("[data-vol]").forEach((b) => b.addEventListener("click", async () => {
         b.disabled = true;
         const id = b.dataset.vol;
-        const res = b.dataset.mine === "1" ? await MillerDB.withdrawVolunteer(id) : await MillerDB.signupVolunteer(id);
+        const res = b.dataset.mine === "1" ? await MillerDB.withdrawEventVolunteer(id) : await MillerDB.signupEventVolunteer(id);
         if (res.error) { b.disabled = false; alert("Could not update: " + res.error.message); return; }
-        render();
+        renderSection(ev);
       }));
+      wrap.querySelectorAll("[data-delrole]").forEach((b) => b.addEventListener("click", async () => {
+        if (!confirm("Remove this volunteer role and its sign-ups?")) return;
+        await MillerDB.deleteEventVolunteerRole(b.dataset.delrole); renderSection(ev);
+      }));
+      const addrole = document.getElementById("addrole");
+      if (addrole) addrole.addEventListener("click", async () => {
+        const name = document.getElementById("rolename").value.trim();
+        const description = document.getElementById("roledesc").value.trim();
+        const m = document.getElementById("rolemsg");
+        if (!name) { m.textContent = "Enter a role name."; m.className = "msg err"; return; }
+        const { error } = await MillerDB.addEventVolunteerRole(ev.id, { name, description });
+        if (error) { m.textContent = "Could not add: " + error.message; m.className = "msg err"; return; }
+        renderSection(ev);
+      });
+    }
+    function wireCreate(kind) {
+      const btn = document.getElementById("createev");
+      if (!btn) return;
+      btn.addEventListener("click", async () => {
+        const m = document.getElementById("createmsg");
+        const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ""; };
+        const dateVal = (id) => { const el = document.getElementById(id); return el && el.value ? el.value : null; };
+        const en = (id) => { const el = document.getElementById(id); return el ? el.checked : true; };
+        const payload = {
+          kind,
+          event_date: dateVal("f_date"),
+          start_time: val("f_time") || null,
+          location: val("f_loc") || null,
+          details: val("f_details") || null,
+          rsvp_enabled: en("en_rsvp"), potluck_enabled: en("en_potluck"), volunteer_enabled: en("en_volunteer"),
+        };
+        if (kind === "birth") {
+          const baby = val("f_baby");
+          if (!baby) { m.textContent = "Please enter the baby's name."; m.className = "msg err"; return; }
+          payload.title = baby; payload.baby_name = baby;
+          payload.birth_date = dateVal("f_bdate"); payload.parents = val("f_parents") || null;
+        } else {
+          const name = val("f_name");
+          if (!name) { m.textContent = "Please enter a name."; m.className = "msg err"; return; }
+          payload.title = name;
+          payload.born_date = dateVal("f_born"); payload.death_date = dateVal("f_died");
+          payload.service_at = null; payload.service_location = val("f_loc") || null;
+          payload.burial_location = val("f_burial") || null; payload.eulogy = val("f_eulogy") || null;
+        }
+        m.textContent = "Creating…"; m.className = "msg";
+        const { data, error } = await MillerDB.createEvent(payload);
+        if (error) { m.textContent = "Could not create: " + error.message; m.className = "msg err"; return; }
+        await loadEvents();
+        CUR = data.id; SEC = "details"; syncUrl(); render();
+      });
+    }
+
+    async function loadEvents() {
+      const res = await MillerDB.listEvents();
+      EVENTS = res.data || [];
     }
 
     (async function init() {
@@ -400,7 +450,9 @@
         wrap.innerHTML = '<div class="state"><h2>Almost there!</h2><p>Your access is pending approval. Once an elder approves you, you can RSVP here.</p><p><a class="btn btn--gold" href="login.html">My Account</a></p></div>';
         return;
       }
-      MYRSVP = await MillerDB.getMyRsvp();
+      await loadEvents();
+      const valid = CUR && (CUR === "new-birth" || CUR === "new-death" || EVENTS.some((e) => e.id === CUR));
+      if (!valid) { const fam = EVENTS.find((e) => e.kind === "reunion"); CUR = fam ? fam.id : (EVENTS[0] && EVENTS[0].id) || null; }
       render();
     })();
   </script>
