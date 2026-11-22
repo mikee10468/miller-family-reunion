@@ -48,6 +48,18 @@
     .nchip { background:#efe6f7; color:#5a1e8c; border-radius:999px; padding:.15rem .6rem; font-size:.78rem; }
     .empty { color:#6b5b7a; font-style:italic; font-size:.85rem; }
     .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
+    .menu { padding:1rem 1.2rem; }
+    .menu .field { margin:0; }
+    .menu select { font-family:"Cinzel",serif; }
+    .nitem { border:1px solid rgba(109,40,168,.18); border-radius:12px; padding:.85rem 1rem; margin-top:.85rem; position:relative; }
+    .nitem h3 { font-family:"Cinzel",serif; color:var(--purple-800); margin:0 .2rem .15rem 0; font-size:1.08rem; }
+    .nitem .meta { color:#6b5b7a; font-size:.86rem; margin:.12rem 0; }
+    .nitem .body { font-size:.9rem; color:#3a2f45; white-space:pre-wrap; margin:.4rem 0; }
+    .nitem .sub { background:#f6f0fb; border-radius:10px; padding:.55rem .75rem; margin-top:.55rem; font-size:.86rem; color:#4a3a58; }
+    .nitem .sub b { color:#5a1e8c; font-family:"Cinzel",serif; }
+    .nitem .eulogy { white-space:pre-wrap; font-style:italic; color:#473956; margin-top:.55rem; border-left:3px solid var(--gold,#caa24a); padding-left:.75rem; }
+    .nitem .del { position:absolute; top:.7rem; right:.8rem; background:transparent; border:0; color:#a33; cursor:pointer; font:inherit; font-size:.8rem; }
+    .subhead { font-family:"Cinzel",serif; color:var(--purple-600); font-size:.82rem; letter-spacing:.03em; margin:1.1rem 0 .2rem; }
   </style>
 </head>
 <body>
@@ -66,12 +78,59 @@
     const wrap = document.getElementById("wrap");
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
     let ME = null, MYRSVP = null, ATTEND = true;
+    // Which section of the Event menu is showing. Remembered across re-renders.
+    let CURRENT = (new URLSearchParams(location.search).get("s")) || "details";
+
+    // Dates in DD/MM/YYYY (matches the rest of the app); datetimes add the time.
+    function fmtD(v) {
+      if (!v) return "";
+      const d = new Date(String(v).length <= 10 ? v + "T00:00:00" : v);
+      if (isNaN(d)) return esc(v);
+      return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+    }
+    function fmtDT(v) {
+      if (!v) return "";
+      const d = new Date(v);
+      if (isNaN(d)) return esc(v);
+      return fmtD(v) + " · " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    }
+    const canDel = (row) => ME && (row.created_by === ME.id || ME.role === "admin");
+
+    const SECTIONS = [
+      { group: "🎉 Family & Friends Day — Jul 3, 2027", items: [
+        { id: "details",   label: "📅 Event Details" },
+        { id: "rsvp",      label: "✅ RSVP" },
+        { id: "potluck",   label: "🥔 What I'm Bringing" },
+        { id: "volunteer", label: "🙌 Volunteer" },
+      ]},
+      { group: "👪 Family News", items: [
+        { id: "births", label: "👶 New Birth Notices" },
+        { id: "deaths", label: "🕊️ Death Notices" },
+      ]},
+    ];
 
     async function loadAll() {
-      const [rsvps, contribs, roles, signups] = await Promise.all([
+      const [rsvps, contribs, roles, signups, births, deaths] = await Promise.all([
         MillerDB.listRsvps(), MillerDB.listContributions(), MillerDB.listVolunteerRoles(), MillerDB.listVolunteerSignups(),
+        MillerDB.listBirthNotices(), MillerDB.listDeathNotices(),
       ]);
-      return { rsvps: rsvps.data || [], contribs: contribs.data || [], roles: roles.data || [], signups: signups.data || [] };
+      return {
+        rsvps: rsvps.data || [], contribs: contribs.data || [], roles: roles.data || [], signups: signups.data || [],
+        births: births.data || [], deaths: deaths.data || [],
+      };
+    }
+
+    function menuCard() {
+      const opts = SECTIONS.map((g) =>
+        '<optgroup label="' + esc(g.group) + '">' +
+        g.items.map((it) => '<option value="' + it.id + '"' + (CURRENT === it.id ? " selected" : "") + ">" + esc(it.label) + "</option>").join("") +
+        "</optgroup>").join("");
+      return '<div class="card menu"><label class="field"><span>Jump to</span>' +
+        '<select id="nav">' + opts + "</select></label></div>";
+    }
+
+    function detailsCard() {
+      return '<div class="card"><div class="eventline">📅 Saturday, July 3, 2027 · 12–8 PM<br>📍 Mellon Park, Pittsburgh PA 15206</div></div>';
     }
 
     function headcount(rsvps) {
@@ -138,18 +197,155 @@
       return '<div class="card"><h2>Volunteer</h2><p class="lede">Many hands make a great reunion. Sign up to help with:</p>' + rows + "</div>";
     }
 
+    function birthsCard(births) {
+      const list = births.length ? births.map((b) => {
+        const shower = (b.shower_at || b.shower_location || b.shower_note)
+          ? '<div class="sub"><b>🎉 Baby shower</b><br>' +
+              (b.shower_at ? "When: " + esc(fmtDT(b.shower_at)) + "<br>" : "") +
+              (b.shower_location ? "Where: " + esc(b.shower_location) + "<br>" : "") +
+              (b.shower_note ? esc(b.shower_note) : "") + "</div>"
+          : "";
+        return '<div class="nitem">' +
+          (canDel(b) ? '<button class="del" data-delbirth="' + b.id + '">remove</button>' : "") +
+          "<h3>👶 " + esc(b.baby_name) + "</h3>" +
+          (b.birth_date ? '<div class="meta">Born ' + esc(fmtD(b.birth_date)) + "</div>" : "") +
+          (b.parents ? '<div class="meta">Parents: ' + esc(b.parents) + "</div>" : "") +
+          (b.details ? '<div class="body">' + esc(b.details) + "</div>" : "") +
+          shower +
+          '<div class="meta" style="margin-top:.4rem;font-size:.78rem">Posted by ' + esc(b.created_by_name || "a family member") + "</div>" +
+          "</div>";
+      }).join("") : '<p class="empty" style="margin-top:1rem">No birth announcements yet. Share your happy news! 💕</p>';
+      return '<div class="card"><h2>👶 New Birth Notices</h2>' +
+        '<p class="lede">Welcome the newest Millers — and share baby-shower details if there\'s one planned.</p>' +
+        '<label class="field"><span>Baby\'s name *</span><input id="bname" type="text" maxlength="80" placeholder="e.g. Ava Rose Miller" /></label>' +
+        '<div class="row">' +
+          '<label class="field"><span>Date of birth</span><input id="bdate" type="date" /></label>' +
+          '<label class="field"><span>Parents</span><input id="bparents" type="text" maxlength="120" placeholder="e.g. John & Maria Miller" /></label>' +
+        "</div>" +
+        '<label class="field"><span>Details (weight, length, a note…)</span><textarea id="bdetails" rows="2" maxlength="600"></textarea></label>' +
+        '<div class="subhead">BABY SHOWER (optional)</div>' +
+        '<div class="row">' +
+          '<label class="field"><span>Date &amp; time</span><input id="bshowerat" type="datetime-local" /></label>' +
+          '<label class="field"><span>Location</span><input id="bshowerloc" type="text" maxlength="160" placeholder="e.g. Grandma\'s house" /></label>' +
+        "</div>" +
+        '<label class="field"><span>Shower note</span><input id="bshowernote" type="text" maxlength="200" placeholder="(registry link, RSVP by…)" /></label>' +
+        '<button class="btn btn--gold" id="addbirth">Post birth notice</button><p class="msg" id="bmsg"></p>' +
+        list + "</div>";
+    }
+
+    function deathsCard(deaths) {
+      const list = deaths.length ? deaths.map((d) => {
+        const dates = [d.birth_date ? fmtD(d.birth_date) : null, d.death_date ? fmtD(d.death_date) : null];
+        const span = (dates[0] || dates[1]) ? '<div class="meta">' + esc(dates[0] || "?") + " – " + esc(dates[1] || "?") + "</div>" : "";
+        const service = (d.service_at || d.service_location)
+          ? '<div class="sub"><b>⚜️ Service</b><br>' +
+              (d.service_at ? "When: " + esc(fmtDT(d.service_at)) + "<br>" : "") +
+              (d.service_location ? "Where: " + esc(d.service_location) : "") + "</div>"
+          : "";
+        const burial = d.burial_location ? '<div class="sub"><b>🌹 Burial</b><br>' + esc(d.burial_location) + "</div>" : "";
+        return '<div class="nitem">' +
+          (canDel(d) ? '<button class="del" data-deldeath="' + d.id + '">remove</button>' : "") +
+          "<h3>🕊️ " + esc(d.person_name) + "</h3>" + span +
+          (d.details ? '<div class="body">' + esc(d.details) + "</div>" : "") +
+          service + burial +
+          (d.eulogy ? '<div class="eulogy">' + esc(d.eulogy) + "</div>" : "") +
+          '<div class="meta" style="margin-top:.4rem;font-size:.78rem">Posted by ' + esc(d.created_by_name || "a family member") + "</div>" +
+          "</div>";
+      }).join("") : '<p class="empty" style="margin-top:1rem">No notices here. 🤍</p>';
+      return '<div class="card"><h2>🕊️ Death Notices</h2>' +
+        '<p class="lede">Remember and honor those we\'ve lost, with service, burial, and eulogy details for the family.</p>' +
+        '<label class="field"><span>Name *</span><input id="dname" type="text" maxlength="100" placeholder="e.g. Loyd Miller Sr." /></label>' +
+        '<div class="row">' +
+          '<label class="field"><span>Born</span><input id="dborn" type="date" /></label>' +
+          '<label class="field"><span>Passed</span><input id="ddied" type="date" /></label>' +
+        "</div>" +
+        '<div class="subhead">SERVICE &amp; BURIAL</div>' +
+        '<div class="row">' +
+          '<label class="field"><span>Service date &amp; time</span><input id="dserviceat" type="datetime-local" /></label>' +
+          '<label class="field"><span>Service location</span><input id="dserviceloc" type="text" maxlength="200" placeholder="Funeral home / church" /></label>' +
+        "</div>" +
+        '<label class="field"><span>Burial / resting place</span><input id="dburial" type="text" maxlength="200" placeholder="Cemetery name & location" /></label>' +
+        '<label class="field"><span>Eulogy (optional)</span><textarea id="deulogy" rows="4" maxlength="4000" placeholder="A few words in their memory…"></textarea></label>' +
+        '<label class="field"><span>Other notes</span><textarea id="ddetails" rows="2" maxlength="600"></textarea></label>' +
+        '<button class="btn btn--gold" id="adddeath">Post notice</button><p class="msg" id="dmsg"></p>' +
+        list + "</div>";
+    }
+
     async function render() {
-      const { rsvps, contribs, roles, signups } = await loadAll();
-      const hc = headcount(rsvps);
-      wrap.innerHTML =
-        '<div class="banner"><b>' + hc.people + "</b> family &amp; friends coming so far" +
-          (hc.households ? " · <b>" + hc.households + "</b> households RSVP’d" : "") + "</div>" +
-        '<div class="card"><div class="eventline">📅 Saturday, July 3, 2027 · 12–8 PM<br>📍 Mellon Park, Pittsburgh PA 15206</div></div>' +
-        rsvpCard() + potluckCard(contribs) + volunteerCard(roles, signups);
+      const data = await loadAll();
+      let html = menuCard();
+      if (CURRENT === "details") {
+        const hc = headcount(data.rsvps);
+        html += '<div class="banner"><b>' + hc.people + "</b> family &amp; friends coming so far" +
+          (hc.households ? " · <b>" + hc.households + "</b> households RSVP’d" : "") + "</div>" + detailsCard();
+      } else if (CURRENT === "rsvp") { html += rsvpCard(); }
+      else if (CURRENT === "potluck") { html += potluckCard(data.contribs); }
+      else if (CURRENT === "volunteer") { html += volunteerCard(data.roles, data.signups); }
+      else if (CURRENT === "births") { html += birthsCard(data.births); }
+      else if (CURRENT === "deaths") { html += deathsCard(data.deaths); }
+      wrap.innerHTML = html;
       wire();
     }
 
     function wire() {
+      const toIso = (v) => (v ? new Date(v).toISOString() : null);
+      // Section menu
+      const nav = document.getElementById("nav");
+      if (nav) nav.addEventListener("change", () => {
+        CURRENT = nav.value;
+        try { history.replaceState(null, "", "event.html?s=" + CURRENT); } catch (_) {}
+        render();
+      });
+
+      // Add birth notice
+      const addbirth = document.getElementById("addbirth");
+      if (addbirth) addbirth.addEventListener("click", async () => {
+        const baby_name = document.getElementById("bname").value.trim();
+        const m = document.getElementById("bmsg");
+        if (!baby_name) { m.textContent = "Please enter the baby's name."; m.className = "msg err"; return; }
+        m.textContent = "Posting…"; m.className = "msg";
+        const { error } = await MillerDB.addBirthNotice({
+          baby_name,
+          birth_date: document.getElementById("bdate").value || null,
+          parents: document.getElementById("bparents").value.trim(),
+          details: document.getElementById("bdetails").value.trim(),
+          shower_at: toIso(document.getElementById("bshowerat").value),
+          shower_location: document.getElementById("bshowerloc").value.trim(),
+          shower_note: document.getElementById("bshowernote").value.trim(),
+        });
+        if (error) { m.textContent = "Could not post: " + error.message; m.className = "msg err"; return; }
+        render();
+      });
+      wrap.querySelectorAll("[data-delbirth]").forEach((b) => b.addEventListener("click", async () => {
+        if (!confirm("Remove this birth notice?")) return;
+        await MillerDB.deleteBirthNotice(b.dataset.delbirth); render();
+      }));
+
+      // Add death notice
+      const adddeath = document.getElementById("adddeath");
+      if (adddeath) adddeath.addEventListener("click", async () => {
+        const person_name = document.getElementById("dname").value.trim();
+        const m = document.getElementById("dmsg");
+        if (!person_name) { m.textContent = "Please enter a name."; m.className = "msg err"; return; }
+        m.textContent = "Posting…"; m.className = "msg";
+        const { error } = await MillerDB.addDeathNotice({
+          person_name,
+          birth_date: document.getElementById("dborn").value || null,
+          death_date: document.getElementById("ddied").value || null,
+          service_at: toIso(document.getElementById("dserviceat").value),
+          service_location: document.getElementById("dserviceloc").value.trim(),
+          burial_location: document.getElementById("dburial").value.trim(),
+          eulogy: document.getElementById("deulogy").value.trim(),
+          details: document.getElementById("ddetails").value.trim(),
+        });
+        if (error) { m.textContent = "Could not post: " + error.message; m.className = "msg err"; return; }
+        render();
+      });
+      wrap.querySelectorAll("[data-deldeath]").forEach((b) => b.addEventListener("click", async () => {
+        if (!confirm("Remove this notice?")) return;
+        await MillerDB.deleteDeathNotice(b.dataset.deldeath); render();
+      }));
+
       // RSVP toggle
       wrap.querySelectorAll("#att button").forEach((b) => b.addEventListener("click", () => {
         ATTEND = b.dataset.a === "1";

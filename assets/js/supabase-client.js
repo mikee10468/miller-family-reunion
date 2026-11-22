@@ -269,6 +269,51 @@
       return client.from("volunteer_signups").delete().eq("role_id", roleId).eq("member_id", session.user.id);
     },
 
+    /* ---- Family news: birth & death notices ---- */
+    async listBirthNotices() {
+      return client.from("birth_notices").select("*").order("created_at", { ascending: false });
+    },
+    async addBirthNotice(n) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      return client.from("birth_notices").insert({
+        baby_name: n.baby_name,
+        birth_date: n.birth_date || null,
+        parents: n.parents || null,
+        details: n.details || null,
+        shower_at: n.shower_at || null,
+        shower_location: n.shower_location || null,
+        shower_note: n.shower_note || null,
+        created_by: session.user.id,
+        created_by_name: (profile && (profile.full_name || profile.email)) || "A family member",
+      });
+    },
+    async deleteBirthNotice(id) {
+      return client.from("birth_notices").delete().eq("id", id);
+    },
+    async listDeathNotices() {
+      return client.from("death_notices").select("*").order("created_at", { ascending: false });
+    },
+    async addDeathNotice(n) {
+      const session = await this.getSession();
+      const profile = await this.getProfile();
+      return client.from("death_notices").insert({
+        person_name: n.person_name,
+        birth_date: n.birth_date || null,
+        death_date: n.death_date || null,
+        service_at: n.service_at || null,
+        service_location: n.service_location || null,
+        burial_location: n.burial_location || null,
+        eulogy: n.eulogy || null,
+        details: n.details || null,
+        created_by: session.user.id,
+        created_by_name: (profile && (profile.full_name || profile.email)) || "A family member",
+      });
+    },
+    async deleteDeathNotice(id) {
+      return client.from("death_notices").delete().eq("id", id);
+    },
+
     /* ---- Tree link: which tree person a member IS ---- */
     // A member claims their own node on the tree (enables posting).
     async setMyPerson(personId) {
