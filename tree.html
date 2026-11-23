@@ -79,9 +79,11 @@
     .ancestor { text-align:center; margin:0 auto 1rem; }
     .ancestor__label { font-family:"Cinzel",serif; color:var(--purple-600); font-size:.8rem; letter-spacing:.05em; margin-bottom:.3rem; }
     /* faint tree silhouette behind the tree views */
-    body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.06;
+    body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.14;
       background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20200%20260'%3E%3Cg%20fill='%233B0A58'%3E%3Crect%20x='95'%20y='150'%20width='10'%20height='98'%20rx='4'/%3E%3Cpath%20d='M100%20200%20C72%20192%2062%20180%2058%20166'%20stroke='%233B0A58'%20stroke-width='6'%20fill='none'/%3E%3Cpath%20d='M100%20190%20C128%20182%20138%20170%20142%20156'%20stroke='%233B0A58'%20stroke-width='6'%20fill='none'/%3E%3Ccircle%20cx='100'%20cy='92'%20r='58'/%3E%3Ccircle%20cx='55'%20cy='120'%20r='40'/%3E%3Ccircle%20cx='145'%20cy='120'%20r='40'/%3E%3Ccircle%20cx='100'%20cy='58'%20r='42'/%3E%3C/g%3E%3C/svg%3E") no-repeat center 14vh;
       background-size:min(560px,86vw) auto; }
+    /* dark mode: the dark-purple silhouette would vanish on a dark bg, so brighten it */
+    html[data-theme="dark"] body::before { opacity:.16; filter:brightness(2.8) saturate(1.2); }
     .node__name { font-family:"Cinzel",serif; font-weight:700; letter-spacing:.01em; }
     .node__years { font-size:.68rem; color:#7a6a8a; }
     .node.dec .node__name::after { content:" ✝"; color:#b98bdd; font-size:.75em; }
