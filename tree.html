@@ -80,8 +80,8 @@
     .ancestor__label { font-family:"Cinzel",serif; color:var(--purple-600); font-size:.8rem; letter-spacing:.05em; margin-bottom:.3rem; }
     /* faint tree silhouette behind the tree views */
     body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.24;
-      background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20200%20260'%3E%3Cg%20fill='%233B0A58'%3E%3Crect%20x='95'%20y='150'%20width='10'%20height='98'%20rx='4'/%3E%3Cpath%20d='M100%20200%20C72%20192%2062%20180%2058%20166'%20stroke='%233B0A58'%20stroke-width='6'%20fill='none'/%3E%3Cpath%20d='M100%20190%20C128%20182%20138%20170%20142%20156'%20stroke='%233B0A58'%20stroke-width='6'%20fill='none'/%3E%3Ccircle%20cx='100'%20cy='92'%20r='58'/%3E%3Ccircle%20cx='55'%20cy='120'%20r='40'/%3E%3Ccircle%20cx='145'%20cy='120'%20r='40'/%3E%3Ccircle%20cx='100'%20cy='58'%20r='42'/%3E%3C/g%3E%3C/svg%3E") no-repeat center 14vh;
-      background-size:min(560px,86vw) auto; }
+      background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20220%20372'%3E%3Cg%20fill='%233B0A58'%3E%3Cpath%20d='M104%20300%20L116%20300%20L120%20360%20L100%20360%20Z'/%3E%3Cpath%20d='M110%2014%20L140%2066%20L124%2066%20L156%20116%20L136%20116%20L172%20168%20L146%20168%20L186%20222%20L152%20222%20L198%20284%20L158%20284%20L210%20330%20L10%20330%20L62%20284%20L22%20284%20L68%20222%20L34%20222%20L74%20168%20L48%20168%20L84%20116%20L64%20116%20L96%2066%20L80%2066%20Z'/%3E%3C/g%3E%3C/svg%3E") no-repeat center 8vh;
+      background-size:min(440px,70vw) auto; }
     /* dark mode: the dark-purple silhouette would vanish on a dark bg, so brighten it */
     html[data-theme="dark"] body::before { opacity:.16; filter:brightness(2.8) saturate(1.2); }
     .node__name { font-family:"Cinzel",serif; font-weight:700; letter-spacing:.01em; }
