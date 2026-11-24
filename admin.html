@@ -206,10 +206,17 @@
               "</select>" +
             (canRole ? ' <button class="btn btn--sm btn--outline" data-setpw="' + m.id + '" data-email="' + esc(m.email) + '" data-name="' + esc(m.full_name || "") + '">Reset password</button>' : "") +
           "</div>" +
-          (canRole ? '<div class="actions" style="margin-top:.4rem">Link to tree person: <select data-person="' + m.id + '">' +
-            '<option value="">— not on tree (can\'t post) —</option>' +
-            treePersons.map((p) => '<option value="' + p.id + '"' + (m.person_id === p.id ? " selected" : "") + ">" + esc(p.full_name) + (p.birth_year ? " (b. " + p.birth_year + ")" : "") + "</option>").join("") +
-            '</select> <span class="linkmsg" data-linkmsg="' + m.id + '">' + (m.person_id ? "✓ linked" : "") + "</span></div>" : "") +
+          (canRole ? (function () {
+            var linkOpts = treePersons.map((p) => '<option value="' + p.id + '"' + (m.person_id === p.id ? " selected" : "") + ">" + esc(p.full_name) + (p.birth_year ? " (b. " + p.birth_year + ")" : "") + "</option>").join("");
+            var parentOpts = treePersons.map((p) => '<option value="' + p.id + '">' + esc(p.full_name) + (p.birth_year ? " (b. " + p.birth_year + ")" : "") + "</option>").join("");
+            var linkedName = (m.person_id && PERSON_BYID[m.person_id]) ? esc(PERSON_BYID[m.person_id].full_name) : "";
+            return '<div class="actions" style="margin-top:.4rem">Link to <b>existing</b> tree person: <select data-person="' + m.id + '">' +
+                '<option value="">— not on tree (can\'t post) —</option>' + linkOpts +
+              '</select> <span class="linkmsg" data-linkmsg="' + m.id + '">' + (linkedName ? "✓ Linked to " + linkedName : "") + "</span></div>" +
+              '<div class="actions" style="margin-top:.3rem;font-size:.9rem;color:#555">…or make a <b>new</b> tree person for them as a child of: ' +
+                '<select data-childparent="' + m.id + '"><option value="">— choose parent —</option>' + parentOpts + "</select> " +
+                '<button class="btn btn--sm btn--outline" data-addchild="' + m.id + '" data-name="' + esc(m.full_name || "") + '">＋ Create as child &amp; link</button></div>';
+          })() : "") +
           '<div class="pw-out"></div>' +
         "</div>"
       ).join("") + "</div>";
@@ -510,7 +517,31 @@
             if (note) { note.textContent = "⚠ " + msg; note.style.color = "#b11"; } else alert(msg);
             return;
           }
-          if (note) { note.textContent = sel.value ? "✓ linked" : "✓ unlinked"; note.style.color = "#1b6b1b"; }
+          if (note) {
+            if (sel.value) {
+              const opt = sel.options[sel.selectedIndex];
+              note.textContent = "✓ Linked to " + (opt ? opt.text.replace(/\s*\(b\.[^)]*\)\s*$/, "") : "person");
+            } else { note.textContent = "✓ unlinked"; }
+            note.style.color = "#1b6b1b";
+          }
+        }));
+      wrap.querySelectorAll("[data-addchild]").forEach((b) =>
+        b.addEventListener("click", async () => {
+          const mid = b.dataset.addchild, name = b.dataset.name || "";
+          const psel = wrap.querySelector('[data-childparent="' + mid + '"]');
+          const parentId = psel && psel.value;
+          if (!parentId) { alert("Choose the parent first, then click “Create as child & link”."); return; }
+          const parent = PERSON_BYID[parentId];
+          const parentName = parent ? parent.full_name : "the selected parent";
+          if (!confirm('Create a NEW tree person "' + name + '" as a child of ' + parentName + ', and link this account to it?')) return;
+          b.disabled = true; b.textContent = "Creating…";
+          const fields = { full_name: name };
+          if (parent && parent.gender === "female") fields.mother_id = parentId; else fields.father_id = parentId;
+          const { data, error } = await MillerDB.createPersonDirect(fields);
+          if (error || !data) { b.disabled = false; b.textContent = "＋ Create as child & link"; alert("Could not create: " + ((error && error.message) || "unknown error")); return; }
+          const r = await MillerDB.setMemberPerson(mid, data.id);
+          if (r && r.error) alert("Created the child node, but linking failed: " + r.error.message);
+          load();
         }));
       wrap.querySelectorAll("[data-addtree]").forEach((b) =>
         b.addEventListener("click", async () => {

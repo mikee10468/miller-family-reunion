@@ -123,11 +123,16 @@
     // Admin/reviewer: create a bare tree person (no relations yet) and return its id.
     async createPersonDirect(fields) {
       const session = await this.getSession();
-      return client.from("persons").insert({
+      const row = {
         full_name: fields.full_name,
         is_living: fields.is_living !== false,
         created_by: session ? session.user.id : null,
-      }).select("id").single();
+      };
+      // Optional parent/gender so a node can be created as someone's child.
+      if (fields.father_id) row.father_id = fields.father_id;
+      if (fields.mother_id) row.mother_id = fields.mother_id;
+      if (fields.gender) row.gender = fields.gender;
+      return client.from("persons").insert(row).select("id").single();
     },
     async setStatus(id, status) {
       return client.from("profiles").update({ status }).eq("id", id);
