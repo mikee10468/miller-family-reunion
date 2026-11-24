@@ -73,6 +73,7 @@
         tabBtn("reconcile", "Tree Check", counts.reconcile) +
         tabBtn("invites", "Invites", counts.invites) +
         tabBtn("guest", "Guest Passes", counts.guest) +
+        (ME && ME.role === "admin" ? tabBtn("logins", "Login Log", 0) : "") +
         (ME && ME.role === "admin" ? tabBtn("settings", "Settings", 0) : "") +
         '<a class="tab" href="tree.html" style="margin-left:auto;">View Tree</a>' +
         '<a class="tab" href="login.html">My Account</a>' +
@@ -101,6 +102,12 @@
       const unlinkedMembers = (members || []).filter((m) => !m.person_id || !PERSON_BYID[m.person_id]);
       const counts = { requests: pendingReqs, tree: pendingSubs, members: (members || []).length, reconcile: unlinkedMembers.length, invites: (invites || []).filter(i=>!i.used).length, guest: activePasses.length };
 
+      let logins = [];
+      if (TAB === "logins" && ME.role === "admin") {
+        const r = await MillerDB.recentLoginEvents(150);
+        logins = (r && r.data) || [];
+      }
+
       let body = tabsBar(counts);
       if (TAB === "requests") body += renderRequests(reqs || []);
       if (TAB === "tree") body += renderSubmissions(subs || []);
@@ -108,6 +115,7 @@
       if (TAB === "reconcile") body += renderReconcile(members || [], persons || []);
       if (TAB === "invites") body += renderInvites(invites || []);
       if (TAB === "guest") body += renderGuestPasses(passes || [], redemptions || []);
+      if (TAB === "logins") body += renderLogins(logins);
       if (TAB === "settings") body += renderSettings(settings);
       wrap.innerHTML = body;
       bind();
@@ -196,7 +204,7 @@
             'Status: <select data-status="' + m.id + '">' +
               ["pending","active","suspended"].map((s)=>'<option value="'+s+'"'+(m.status===s?" selected":"")+">"+s+"</option>").join("") +
               "</select>" +
-            (canRole ? ' <button class="btn btn--sm btn--outline" data-setpw="' + m.id + '" data-email="' + esc(m.email) + '" data-name="' + esc(m.full_name || "") + '">Set / reset password</button>' : "") +
+            (canRole ? ' <button class="btn btn--sm btn--outline" data-setpw="' + m.id + '" data-email="' + esc(m.email) + '" data-name="' + esc(m.full_name || "") + '">Reset password</button>' : "") +
           "</div>" +
           (canRole ? '<div class="actions" style="margin-top:.4rem">Link to tree person: <select data-person="' + m.id + '">' +
             '<option value="">— not on tree (can\'t post) —</option>' +
@@ -273,7 +281,8 @@
         "Open: " + site + "\nTap \"Sign In\" and use:\n" +
         "Email: " + email + "\nPassword: " + password + "\n\n" +
         "You can change your password after you sign in.";
-      return '<div class="notice">Login ready — send this to them by text or email:' +
+      return '<div class="notice"><div style="font-weight:700;margin-bottom:.35rem">✅ New password set for <span style="color:#6b21a8">' + esc(email) + "</span></div>" +
+        "This password works only for that email. Send it to them by text or email:" +
         '<textarea class="credmsg" readonly rows="8" style="width:100%;margin-top:.5rem;font-family:ui-monospace,Consolas,monospace;font-size:.82rem;border-radius:8px;padding:.6rem;border:1px solid #d9c6ec;">' + esc(msg) + "</textarea>" +
         '<button class="btn btn--gold btn--sm" data-copy>Copy message</button></div>';
     }
@@ -283,6 +292,27 @@
       if (btn && ta) btn.addEventListener("click", () => {
         navigator.clipboard.writeText(ta.value).then(() => { btn.textContent = "Copied ✓"; }, () => { ta.select(); });
       });
+    }
+
+    function renderLogins(events) {
+      if (!events.length) return '<p class="empty">No sign-in attempts recorded yet. New sign-ins (successful and failed) will appear here.</p>';
+      const td = 'padding:.45rem .5rem;border-bottom:1px solid #e7e0f0;';
+      const th = 'text-align:left;' + td + 'font-weight:600;';
+      const rows = events.map((e) => {
+        const when = e.created_at ? new Date(e.created_at).toLocaleString() : "—";
+        const ok = !!e.success;
+        return '<tr>' +
+          '<td style="' + td + '">' + esc(when) + "</td>" +
+          '<td style="' + td + '">' + esc(e.email || "—") + "</td>" +
+          '<td style="' + td + '"><span class="pill ' + (ok ? "active" : "suspended") + '">' + (ok ? "✓ success" : "✗ failed") + "</span></td>" +
+          "</tr>";
+      }).join("");
+      const fails = events.filter((e) => !e.success).length;
+      return '<div class="meta" style="margin:.4rem 0 .8rem">Showing the ' + events.length + " most recent sign-in attempts · " +
+          fails + " failed. Failed attempts show the email that was typed.</div>" +
+        '<table style="width:100%;border-collapse:collapse;font-size:.9rem">' +
+          '<thead><tr><th style="' + th + '">When</th><th style="' + th + '">Email entered</th><th style="' + th + '">Result</th></tr></thead>' +
+          "<tbody>" + rows + "</tbody></table>";
     }
 
     function renderSettings(s) {
@@ -413,6 +443,7 @@
           const { data, error } = await MillerDB.adminCreateMember({ email, full_name: name });
           if (error || !data || data.error || !data.password) {
             b.disabled = false; b.innerHTML = origLabel;
+            if (error && error.code === "session_expired") { alert(error.message); return; }
             alert("Could not create login: " + (error ? error.message : (data && data.error) || "unknown error"));
             return;
           }
@@ -429,6 +460,7 @@
           const { data, error } = await MillerDB.adminCreateMember({ email: b.dataset.email, full_name: b.dataset.name || "" });
           b.disabled = false; b.textContent = label;
           if (error || !data || data.error || !data.password) {
+            if (error && error.code === "session_expired") { alert(error.message); return; }
             alert("Could not set password: " + (error ? error.message : (data && data.error) || "unknown error"));
             return;
           }

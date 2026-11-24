@@ -29,11 +29,35 @@
     async updatePassword(newPassword) {
       return client.auth.updateUser({ password: newPassword });
     },
-    // Admin-only: create/re-password a member's login (returns { email, password })
+    // Admin-only: create/re-password a member's login (returns { email, password }).
+    // If the admin's session token has gone stale (401), transparently refresh it
+    // once and retry; if it still fails, surface a clear "session expired" error.
     async adminCreateMember({ email, full_name, role }) {
-      return client.functions.invoke("admin-create-member", {
+      const call = () => client.functions.invoke("admin-create-member", {
         body: { email, full_name: full_name || null, role: role || "member" },
       });
+      let res = await call();
+      const is401 = (r) => r && r.error && r.error.context && r.error.context.status === 401;
+      if (is401(res)) {
+        const { data: refreshed } = await client.auth.refreshSession();
+        if (refreshed && refreshed.session) res = await call();
+        if (is401(res)) {
+          return { data: null, error: { code: "session_expired",
+            message: "Your admin session expired — please sign out and sign in again, then retry." } };
+        }
+      }
+      return res;
+    },
+    // Record a sign-in attempt (success or failure). Best-effort; never throws.
+    async logLogin(email, success) {
+      if (!client) return;
+      try { await client.rpc("log_login", { p_email: (email || "").trim().toLowerCase(), p_success: !!success }); }
+      catch (_) { /* logging must never block sign-in */ }
+    },
+    // Admin-only: most recent sign-in attempts for the admin login log.
+    async recentLoginEvents(limit) {
+      if (!client) return { data: [], error: null };
+      return client.from("login_events").select("*").order("created_at", { ascending: false }).limit(limit || 100);
     },
     async getSession() {
       if (!client) return null;
