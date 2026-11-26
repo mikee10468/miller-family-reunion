@@ -138,10 +138,10 @@ window.MILLER_CONFIGURED = (function () {
 
   var css =
     '#medicorp-badge{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);z-index:40;' +
-    'font-family:"Cinzel",serif;font-size:.62rem;letter-spacing:.04em;line-height:1;color:rgba(90,74,107,.55);' +
-    'background:rgba(255,255,255,.42);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);' +
-    'padding:.18rem .55rem;border-radius:999px;pointer-events:none;user-select:none;white-space:nowrap;' +
-    'box-shadow:0 1px 3px rgba(30,10,45,.08);}' +
+    'font-family:"Cinzel",serif;font-size:.64rem;letter-spacing:.04em;line-height:1;color:rgba(59,10,88,.82);' +
+    'background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);' +
+    'padding:.2rem .6rem;border-radius:999px;pointer-events:none;user-select:none;white-space:nowrap;' +
+    'box-shadow:0 1px 4px rgba(30,10,45,.16);}' +
     'a#medicorp-badge{pointer-events:auto;text-decoration:none;}a#medicorp-badge:hover{color:rgba(90,74,107,.9);}' +
     'html[data-theme="dark"] #medicorp-badge{color:rgba(202,190,219,.5);background:rgba(36,26,46,.45);box-shadow:none;}';
   function injectCss() {
