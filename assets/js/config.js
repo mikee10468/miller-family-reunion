@@ -15,6 +15,24 @@ window.MILLER_CONFIG = {
   facebookPageUrl: "",        // your family Facebook page/group, for the Share button
   siteUrl: "https://mikee10468.github.io/miller-family-reunion/", // public app URL (used in invite messages)
 
+  /* -----------------------------------------------------------------------
+     BRAND — white-label layer. Everything family-specific lives here so a new
+     family becomes a config change, not a code fork. The runtime injects the
+     footer badge from this block and swaps any element marked data-brand="key"
+     with the matching value below. See docs/WHITE-LABEL.md for the roadmap.
+     ----------------------------------------------------------------------- */
+  brand: {
+    familyName: "Miller Family",            // "Miller Family"
+    familyCaps: "MILLER FAMILY",            // top-bar subtitles (all caps)
+    founders:   "Lawrence & Lula Miller",   // landing hero
+    tagline:    "Different Generations ~ Same Family ~ One Love",
+    productName: "Family Reunion Hub",      // the product, family-agnostic
+    poweredBy:  "MEDI-corp",                // the company behind the product
+    footerBadge: "A Miller Family Product powered by MEDI-corp", // bottom-right badge; blank = auto-compose
+    poweredByUrl: "",                       // optional link for the badge (blank = non-clickable label)
+    themeColor: "#3B0A58",                  // brand purple (matches <meta theme-color>)
+  },
+
   // Web Push public key (safe to ship). The matching PRIVATE key is a Supabase
   // secret (VAPID_PRIVATE_KEY) used only by the send-push Edge Function.
   vapidPublicKey: "BDvUAInDL7LCGcjxkWDuRCtlcet_8E7cJNsmBk9WBFJ61Ehou2cllmJB0xZzd5213MC4W1MkuR6XNnFfkIZKu8s",
@@ -106,4 +124,59 @@ window.MILLER_CONFIGURED = (function () {
     wrap.appendChild(btn); wrap.appendChild(menu); document.body.appendChild(wrap);
   }
   if (document.body) buildThemeControl(); else document.addEventListener("DOMContentLoaded", buildThemeControl);
+})();
+
+/* =========================================================================
+   Brand layer (white-label): a discrete bottom-right product badge on every
+   page, plus a declarative text-swap so markup can stay family-neutral.
+   Mark any element with data-brand="familyName" (or any brand key) and its
+   text is replaced from window.MILLER_CONFIG.brand at load. All driven by the
+   BRAND block in this file — see docs/WHITE-LABEL.md.
+   ========================================================================= */
+(function () {
+  var brand = (window.MILLER_CONFIG && window.MILLER_CONFIG.brand) || {};
+
+  var css =
+    '#medicorp-badge{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);z-index:40;' +
+    'font-family:"Cinzel",serif;font-size:.64rem;letter-spacing:.04em;line-height:1;color:rgba(59,10,88,.82);' +
+    'background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);' +
+    'padding:.2rem .6rem;border-radius:999px;pointer-events:none;user-select:none;white-space:nowrap;' +
+    'box-shadow:0 1px 4px rgba(30,10,45,.16);}' +
+    'a#medicorp-badge{pointer-events:auto;text-decoration:none;}a#medicorp-badge:hover{color:rgba(90,74,107,.9);}' +
+    'html[data-theme="dark"] #medicorp-badge{color:rgba(202,190,219,.5);background:rgba(36,26,46,.45);box-shadow:none;}';
+  function injectCss() {
+    if (document.getElementById("medicorp-badge-css")) return;
+    var s = document.createElement("style"); s.id = "medicorp-badge-css"; s.textContent = css;
+    (document.head || document.documentElement).appendChild(s);
+  }
+
+  // Replace the text of any [data-brand="key"] element with brand[key].
+  function applyBrand(root) {
+    (root || document).querySelectorAll("[data-brand]").forEach(function (el) {
+      var k = el.getAttribute("data-brand");
+      if (k && brand[k] != null) el.textContent = brand[k];
+    });
+  }
+
+  function buildBadge() {
+    if (document.getElementById("medicorp-badge") || !document.body) return;
+    var text = brand.footerBadge ||
+      ("A " + (brand.familyName || "Family") + " Product powered by " + (brand.poweredBy || "MEDI-corp"));
+    var el;
+    if (brand.poweredByUrl) {
+      el = document.createElement("a");
+      el.href = brand.poweredByUrl; el.target = "_blank"; el.rel = "noopener";
+    } else {
+      el = document.createElement("div");
+    }
+    el.id = "medicorp-badge"; el.textContent = text;
+    el.setAttribute("aria-hidden", "true");
+    document.body.appendChild(el);
+  }
+
+  function boot() { injectCss(); applyBrand(); buildBadge(); }
+  if (document.body) boot(); else document.addEventListener("DOMContentLoaded", boot);
+
+  // Expose for pages that rebuild DOM after load (e.g. re-apply data-brand).
+  window.MillerBrand = { get: function () { return brand; }, apply: applyBrand };
 })();
