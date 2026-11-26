@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Reels · Miller Family</title>
+  <meta name="theme-color" content="#3B0A58" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    body { background: linear-gradient(180deg, #faf5ef, #f1e8f7); min-height: 100vh; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      background: linear-gradient(160deg, var(--purple-900), var(--purple-600)); color:#fff;
+      padding: calc(env(safe-area-inset-top,0px) + .9rem) 1rem .9rem; position: sticky; top: env(safe-area-inset-top,0px); z-index: 20; }
+    .topbar .script { font-family:"Great Vibes",cursive; color:var(--gold); font-size:1.7rem; line-height:1; }
+    .topbar .sub { font-family:"Cinzel",serif; font-size:.7rem; letter-spacing:.1em; color:#e9dcff; }
+    .topbar a.home { color:var(--gold-soft); text-decoration:none; font-family:"Cinzel",serif; font-size:.85rem; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 1.2rem 1rem calc(3rem + env(safe-area-inset-bottom,0px)); }
+
+    .hero { background:#fff; border-radius:20px; box-shadow:var(--shadow); border:1px solid rgba(109,40,168,.12);
+      padding:2.6rem 1.6rem; text-align:center; margin:1.6rem 0; }
+    .hero .reel-ico { font-size:3.4rem; line-height:1; }
+    .soon-pill { display:inline-block; margin:1rem 0 .6rem; background:linear-gradient(180deg,#f3c969,#d8a22e); color:#3b0a58;
+      font-family:"Cinzel",serif; font-weight:700; letter-spacing:.08em; font-size:.8rem; text-transform:uppercase;
+      border-radius:999px; padding:.4rem 1rem; box-shadow:0 2px 8px rgba(60,10,70,.18); }
+    .hero h1 { font-family:"Great Vibes",cursive; color:var(--purple-800); font-size:2.6rem; margin:.3rem 0 .2rem; font-weight:400; }
+    .hero .lede { font-family:"Playfair Display",serif; color:#5b4a6b; font-size:1.05rem; margin:.2rem auto 0; max-width:34rem; line-height:1.5; }
+
+    .facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.9rem; margin-top:1.9rem; }
+    .fact { background:#faf5ff; border:1px solid rgba(109,40,168,.14); border-radius:14px; padding:1rem .9rem; }
+    .fact .big { font-family:"Cinzel",serif; color:var(--purple-800); font-size:1.5rem; font-weight:700; }
+    .fact .cap { font-size:.82rem; color:#6b5b7a; margin-top:.15rem; }
+
+    .note { font-size:.85rem; color:#7a6a8a; margin-top:1.6rem; }
+    .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div><div class="script">Family Reels</div><div class="sub">SHORT CLIPS · MILLER FAMILY</div></div>
+    <div><a class="home" href="tree.html">🌳 Tree</a> &nbsp; <a class="home" href="photos.html">📸 Photos</a> &nbsp; <a class="home" href="board.html">📝 Posts</a> &nbsp; <a class="home" href="chat.html">💬 Chat</a> &nbsp; <a class="home" href="feedback.html">✍️ Feedback</a> &nbsp; <a class="home" href="login.html">My Account</a></div>
+  </div>
+
+  <div class="wrap" id="wrap"><div class="state"><p>Loading…</p></div></div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script>
+    const wrap = document.getElementById("wrap");
+
+    function renderComingSoon() {
+      wrap.innerHTML =
+        '<div class="hero">' +
+          '<div class="reel-ico">🎬</div>' +
+          '<div class="soon-pill">✨ Coming soon · Family Reels</div>' +
+          "<h1>Family Reels</h1>" +
+          '<p class="lede">Short 15–30 second video clips to share a moment with the whole family — ' +
+            "a birthday toast, the kids dancing, a hello from far away. We’re putting the finishing touches on it.</p>" +
+          '<div class="facts">' +
+            '<div class="fact"><div class="big">15–30s</div><div class="cap">per clip</div></div>' +
+            '<div class="fact"><div class="big">5</div><div class="cap">reels per person</div></div>' +
+            '<div class="fact"><div class="big">30 days</div><div class="cap">then they gently expire</div></div>' +
+          "</div>" +
+          '<p class="note">When your 5 slots are full, you’ll be asked before your oldest reel is replaced — ' +
+            "nothing disappears without your okay. Check back soon! 💜</p>" +
+        "</div>";
+    }
+
+    (async function init() {
+      if (!MillerDB.configured) { renderComingSoon(); return; }
+      const session = await MillerDB.getSession();
+      if (!session) { location.href = "login.html"; return; }
+      const me = await MillerDB.getProfile();
+      if (me && me.status !== "active") {
+        wrap.innerHTML = '<div class="state"><h2>Almost there!</h2><p>Your access is pending approval. Once an elder approves you, Family Reels will appear here.</p><p><a class="btn btn--gold" href="login.html">My Account</a></p></div>';
+        return;
+      }
+      renderComingSoon();
+    })();
+  </script>
+</body>
+</html>
