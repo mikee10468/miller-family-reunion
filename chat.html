@@ -35,8 +35,18 @@
     .m.me { align-self:flex-end; background:linear-gradient(160deg,var(--purple-600),var(--purple-900)); color:#fff; border-bottom-right-radius:4px; }
     .m.me .who { color:var(--gold-soft,#f3e2b3); }
     .mdel { background:transparent; border:0; color:inherit; opacity:.5; cursor:pointer; font-size:.7rem; margin-left:.3rem; }
-    .composer { display:flex; gap:.5rem; padding:.7rem; border-top:1px solid #f0eaf6; }
-    .composer input { flex:1; padding:.6rem .8rem; border-radius:999px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; }
+    .composer { display:flex; gap:.5rem; padding:.7rem; border-top:1px solid #f0eaf6; align-items:center; }
+    .composer input[type=text] { flex:1; padding:.6rem .8rem; border-radius:999px; border:1px solid rgba(109,40,168,.3); font:inherit; font-family:Georgia,serif; }
+    .chat-photo { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:2.3rem; height:2.3rem;
+      border-radius:50%; border:1px solid rgba(109,40,168,.3); background:#faf6ff; cursor:pointer; font-size:1.1rem; }
+    .cpreview { display:none; align-items:center; gap:.6rem; padding:.5rem .7rem 0; }
+    .cpreview img { max-height:60px; max-width:90px; border-radius:8px; border:1px solid rgba(109,40,168,.2); }
+    .cpreview .x { background:transparent; border:0; color:#a33; cursor:pointer; font-size:.8rem; }
+    .mimg { margin:.2rem 0; }
+    .mimg img { max-width:210px; max-height:240px; border-radius:10px; display:block; cursor:zoom-in; }
+    #lb-root .lb { position:fixed; inset:0; background:rgba(20,8,32,.86); display:flex; align-items:center; justify-content:center; z-index:60; padding:1rem; }
+    #lb-root .lb img { max-width:96vw; max-height:92vh; border-radius:10px; }
+    #lb-root .lb .x { position:absolute; top:1rem; right:1.2rem; background:transparent; border:0; color:#fff; font-size:1.6rem; cursor:pointer; }
     .empty { color:#6b5b7a; font-style:italic; font-size:.9rem; text-align:center; margin:auto; }
     .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
     .btn--sm { padding:.5rem 1rem; font-size:.85rem; }
@@ -69,6 +79,7 @@
   </div>
 
   <div class="wrap" id="wrap"><div class="state"><p>Loading…</p></div></div>
+  <div id="lb-root"></div>
 
   <script src="assets/js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -76,7 +87,11 @@
   <script src="assets/js/notify.js"></script>
   <script>
     const wrap = document.getElementById("wrap");
+    const lbRoot = document.getElementById("lb-root");
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+    const MAX_BYTES = 10 * 1024 * 1024; // 10 MB per photo
+    const IMG = {}; // signed-URL cache: storage_path -> url
+    let CFILE = null; // photo queued in the composer
 
     // Pop-out window support: ?popout=1 renders a compact, nav-free chat.
     const POPOUT = new URLSearchParams(location.search).has("popout");
@@ -142,8 +157,11 @@
         '<div class="presence" id="presence"><span class="lbl">Online now</span></div>' +
         '<div class="panel"><div class="ptitle">' + (active ? esc(convTitle(active)) : "") + "</div>" +
         '<div class="thread" id="thread"><div class="empty">Loading messages…</div></div>' +
-        '<div class="composer"><input id="minput" type="text" maxlength="4000" placeholder="Type a message…" autocomplete="off" />' +
-        '<button class="btn btn--gold btn--sm" id="sendbtn">Send</button></div></div>';
+        '<div class="cpreview" id="cpreview"></div>' +
+        '<div class="composer">' +
+          '<label class="chat-photo" title="Add a photo">📷<input type="file" id="cfile" accept="image/*" hidden /></label>' +
+          '<input id="minput" type="text" maxlength="4000" placeholder="Type a message…" autocomplete="off" />' +
+          '<button class="btn btn--gold btn--sm" id="sendbtn">Send</button></div></div>';
     }
 
     function renderMessages(msgs) {
@@ -153,14 +171,18 @@
       if (!msgs.length) { thread.innerHTML = '<div class="empty">No messages yet. Say hello! 👋</div>'; return; }
       thread.innerHTML = msgs.map((m) => {
         const mine = m.author_id === ME.id, canDel = mine || isReviewer();
+        const img = m.image_path && IMG[m.image_path];
         return '<div class="m ' + (mine ? "me" : "them") + '">' +
           (mine ? "" : '<span class="who">' + esc(m.author_name || "Member") + "</span>") +
-          esc(m.body) + '<span class="tm">' + esc(when(m.created_at)) +
+          (m.body ? esc(m.body) : "") +
+          (img ? '<div class="mimg"><img loading="lazy" src="' + esc(img) + '" alt="shared photo" data-full="' + esc(img) + '" /></div>' : "") +
+          '<span class="tm">' + esc(when(m.created_at)) +
           (canDel ? ' <button class="mdel" data-delmsg="' + m.id + '">×</button>' : "") + "</span></div>";
       }).join("");
       thread.querySelectorAll("[data-delmsg]").forEach((b) => b.addEventListener("click", async (e) => {
         e.stopPropagation(); await MillerDB.deleteMessage(b.dataset.delmsg); refresh();
       }));
+      thread.querySelectorAll(".mimg img[data-full]").forEach((img) => img.addEventListener("click", () => openLightbox(img.dataset.full)));
       if (nearBottom) thread.scrollTop = thread.scrollHeight;
     }
 
@@ -168,6 +190,8 @@
       if (!ACTIVE) return;
       const res = await MillerDB.listMessages(ACTIVE);
       const msgs = res.data || [];
+      const need = msgs.map((m) => m.image_path).filter((p) => p && !IMG[p]);
+      if (need.length && MillerDB.signedUrls) { try { Object.assign(IMG, await MillerDB.signedUrls(need)); } catch (_) {} }
       renderMessages(msgs);
       const newest = msgs.length ? msgs[msgs.length - 1].created_at : null;
       if (document.visibilityState === "visible" && newest && LAST_SEEN[ACTIVE] !== newest) {
@@ -223,13 +247,41 @@
     function wire() {
       wireConvbar();
       const send = document.getElementById("sendbtn"), input = document.getElementById("minput");
+      const cfile = document.getElementById("cfile"), cpreview = document.getElementById("cpreview");
+      function clearPhoto() {
+        CFILE = null;
+        if (cfile) cfile.value = "";
+        if (cpreview) { cpreview.style.display = "none"; cpreview.innerHTML = ""; }
+      }
+      if (cfile) cfile.addEventListener("change", () => {
+        const f = cfile.files && cfile.files[0];
+        if (!f) { clearPhoto(); return; }
+        if (f.size > MAX_BYTES) { alert("That photo is larger than 10 MB — please choose a smaller one."); clearPhoto(); return; }
+        CFILE = f;
+        cpreview.innerHTML = '<img alt="preview" /><button class="x" type="button" id="cpx">remove</button>';
+        cpreview.querySelector("img").src = URL.createObjectURL(f);
+        cpreview.style.display = "flex";
+        cpreview.querySelector("#cpx").addEventListener("click", clearPhoto);
+      });
       async function doSend() {
         const body = input.value.trim();
-        if (!body || !ACTIVE) return;
-        input.value = ""; send.disabled = true;
-        const { error } = await MillerDB.sendMessage(ACTIVE, body);
+        if ((!body && !CFILE) || !ACTIVE) return;
+        send.disabled = true;
+        let imagePath = null;
+        if (CFILE) {
+          const up = await MillerDB.uploadSharedImage(CFILE, "chat");
+          if (up.error) {
+            send.disabled = false;
+            alert(/photo_limit/.test(up.error.message || "") ? "You've reached your photo limit — delete a photo to share another." : ("Could not upload photo: " + up.error.message));
+            return;
+          }
+          imagePath = up.path;
+        }
+        input.value = "";
+        const { error } = await MillerDB.sendMessage(ACTIVE, body, imagePath);
         send.disabled = false; input.focus();
-        if (error) { alert("Could not send: " + error.message); return; }
+        if (error) { if (imagePath) await MillerDB.releasePhoto(imagePath); alert("Could not send: " + error.message); return; }
+        clearPhoto();
         MillerDB.notifyNewMessage(ACTIVE); // fire-and-forget push to the others
         refresh();
       }
@@ -237,7 +289,15 @@
       if (input) input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); doSend(); } });
     }
 
+    function openLightbox(url) {
+      if (!url) return;
+      lbRoot.innerHTML = '<div class="lb" id="lb"><button class="x" id="lbx">✕</button><img src="' + esc(url) + '" /></div>';
+      document.getElementById("lbx").onclick = () => (lbRoot.innerHTML = "");
+      document.getElementById("lb").onclick = (e) => { if (e.target.id === "lb") lbRoot.innerHTML = ""; };
+    }
+
     function draw() {
+      CFILE = null; // don't carry a queued photo across conversation switches
       wrap.innerHTML = shell();
       wire();
       refresh();

@@ -10,7 +10,7 @@ window.MILLER_CONFIG = {
   SUPABASE_ANON_KEY: "sb_publishable_wJmbfSBeEh_cFqsM8Ika-w_Xu0yNOyw",
 
   // App-level settings (editable anytime)
-  photoLimitPerUser: 3,       // free photos per member (Step 4)
+  photoLimitPerUser: 6,       // photos per member — 1 avatar + 5 shared (gallery/board/chat) (Step 4)
   videosEnabled: false,       // premium video uploads off until you set a fee (Step 4)
   facebookPageUrl: "",        // your family Facebook page/group, for the Share button
   siteUrl: "https://mikee10468.github.io/miller-family-reunion/", // public app URL (used in invite messages)
