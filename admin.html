@@ -323,12 +323,13 @@
     }
 
     function renderSettings(s) {
-      const limit = s.photo_limit || "3";
+      const limit = s.photo_limit || "6";
       const vids = s.videos_enabled === "true";
       return '<div class="row"><h3>App Settings</h3>' +
         '<div class="meta">These control limits across the whole app. Only admins can change them.</div>' +
-        '<div class="actions" style="margin-top:1rem;align-items:center;">Free photos per member: ' +
+        '<div class="actions" style="margin-top:1rem;align-items:center;">Photos per member: ' +
           '<input id="set-photo" type="number" min="0" value="' + esc(limit) + '" style="width:76px;padding:.45rem;border-radius:8px;border:1px solid rgba(109,40,168,.3);" /></div>' +
+        '<div class="meta" style="margin-top:.4rem;">Counts every photo a member adds — gallery, board posts, chat, and their profile photo. (6 = 1 avatar + 5 shared.)</div>' +
         '<div class="actions" style="margin-top:.8rem;align-items:center;">Video uploads (premium): ' +
           '<select id="set-vids"><option value="false"' + (!vids ? " selected" : "") + ">Off</option>" +
           '<option value="true"' + (vids ? " selected" : "") + ">On</option></select></div>" +
@@ -586,7 +587,7 @@
       if (saveS) saveS.addEventListener("click", async () => {
         const m = document.getElementById("set-msg");
         m.textContent = " saving…";
-        const pl = String(parseInt(document.getElementById("set-photo").value, 10) || 3);
+        const pl = String(parseInt(document.getElementById("set-photo").value, 10) || 6);
         const vids = document.getElementById("set-vids").value;
         const r1 = await MillerDB.saveSetting("photo_limit", pl);
         const r2 = await MillerDB.saveSetting("videos_enabled", vids);

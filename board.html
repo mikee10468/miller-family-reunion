@@ -48,6 +48,16 @@
     .state { max-width:460px; margin:3rem auto; text-align:center; padding:0 1rem; }
     .btn--sm { padding:.45rem .9rem; font-size:.85rem; }
     .notice { background:#fff7e6; border:1px solid var(--gold,#caa24a); border-radius:12px; padding:.9rem 1rem; color:#5a4a14; font-size:.9rem; }
+    .prow { display:flex; align-items:center; gap:.7rem; margin-top:.6rem; flex-wrap:wrap; }
+    .photo-btn { display:inline-flex; align-items:center; gap:.35rem; cursor:pointer; border:1px solid rgba(109,40,168,.35);
+      color:var(--purple-800); background:#faf6ff; border-radius:999px; padding:.4rem .9rem; font-family:"Cinzel",serif; font-size:.8rem; }
+    .prow .fn { font-size:.78rem; color:#6b5b7a; }
+    .ppreview { max-height:84px; max-width:120px; border-radius:10px; display:none; border:1px solid rgba(109,40,168,.2); }
+    .pimg { margin:.6rem 0 .1rem; }
+    .pimg img { max-width:100%; max-height:420px; border-radius:12px; border:1px solid rgba(109,40,168,.15); cursor:zoom-in; display:block; }
+    #lb-root .lb { position:fixed; inset:0; background:rgba(20,8,32,.86); display:flex; align-items:center; justify-content:center; z-index:60; padding:1rem; }
+    #lb-root .lb img { max-width:96vw; max-height:92vh; border-radius:10px; }
+    #lb-root .lb .x { position:absolute; top:1rem; right:1.2rem; background:transparent; border:0; color:#fff; font-size:1.6rem; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -57,6 +67,7 @@
   </div>
 
   <div class="wrap" id="wrap"><div class="state"><p>Loading…</p></div></div>
+  <div id="lb-root"></div>
 
   <script src="assets/js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -64,8 +75,10 @@
   <script src="assets/js/notify.js"></script>
   <script>
     const wrap = document.getElementById("wrap");
+    const lbRoot = document.getElementById("lb-root");
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
-    let ME = null, PERSONS = [];
+    const MAX_BYTES = 10 * 1024 * 1024; // 10 MB per photo
+    let ME = null, PERSONS = [], PFILE = null;
 
     function initials(name) {
       const parts = String(name || "?").trim().split(/\s+/);
@@ -84,6 +97,12 @@
       return '<div class="card"><h2>Share with the family</h2>' +
         '<p class="lede">Post a message, update, or memory for everyone to see.</p>' +
         '<textarea id="pbody" maxlength="4000" placeholder="What would you like to say?"></textarea>' +
+        '<div class="prow">' +
+          '<label class="photo-btn">📷 Add a photo<input type="file" id="pfile" accept="image/*" hidden /></label>' +
+          '<span class="fn" id="pfname"></span>' +
+          '<img id="ppreview" class="ppreview" alt="preview" />' +
+          '<button class="del" id="pclear" type="button" style="display:none">remove photo</button>' +
+        '</div>' +
         '<div style="text-align:right;margin-top:.6rem"><button class="btn btn--gold btn--sm" id="postbtn">Post</button></div>' +
         '<p class="msg" id="pmsg"></p></div>';
     }
@@ -99,16 +118,18 @@
         '<p class="msg" id="claimmsg"></p></div>';
     }
 
-    function postEl(p, comments) {
+    function postEl(p, comments, urls) {
       const cs = comments.filter((c) => c.target_id === p.id);
       const mine = p.author_id === ME.id, rev = ME.role === "admin" || ME.role === "elder";
+      const imgUrl = p.image_path && urls && urls[p.image_path];
       return '<div class="post" data-post="' + p.id + '">' +
         '<div class="phead"><div class="av">' + esc(initials(p.author_name)) + "</div>" +
           '<div><div class="pwho">' + esc(p.author_name || "A family member") + "</div>" +
           '<div class="pwhen">' + esc(when(p.created_at)) + "</div></div>" +
           (mine || rev ? '<button class="del" data-delpost="' + p.id + '">delete</button>' : "") +
         "</div>" +
-        '<div class="pbody">' + esc(p.body) + "</div>" +
+        (p.body ? '<div class="pbody">' + esc(p.body) + "</div>" : "") +
+        (imgUrl ? '<div class="pimg"><img loading="lazy" src="' + esc(imgUrl) + '" alt="shared photo" data-full="' + esc(imgUrl) + '" /></div>' : "") +
         '<div class="comments">' +
           cs.map((c) => {
             const cmine = c.author_id === ME.id;
@@ -128,8 +149,11 @@
     async function render() {
       const [postsRes, commentsRes] = await Promise.all([MillerDB.listPosts(), MillerDB.listComments("post")]);
       const posts = postsRes.data || [], comments = commentsRes.data || [];
+      const paths = posts.map((p) => p.image_path).filter(Boolean);
+      const urls = paths.length && MillerDB.signedUrls ? await MillerDB.signedUrls(paths) : {};
+      PFILE = null;
       wrap.innerHTML = composer() +
-        (posts.length ? posts.map((p) => postEl(p, comments)).join("") : '<div class="empty">No messages yet — be the first to say hello! 💜</div>');
+        (posts.length ? posts.map((p) => postEl(p, comments, urls)).join("") : '<div class="empty">No messages yet — be the first to say hello! 💜</div>');
       wire();
     }
 
@@ -148,15 +172,53 @@
         render();
       });
 
+      const pfile = document.getElementById("pfile");
+      const pfname = document.getElementById("pfname");
+      const ppreview = document.getElementById("ppreview");
+      const pclear = document.getElementById("pclear");
+      function clearPhoto() {
+        PFILE = null;
+        if (pfile) pfile.value = "";
+        if (pfname) pfname.textContent = "";
+        if (ppreview) { ppreview.style.display = "none"; ppreview.removeAttribute("src"); }
+        if (pclear) pclear.style.display = "none";
+      }
+      if (pfile) pfile.addEventListener("change", () => {
+        const f = pfile.files && pfile.files[0];
+        const m = document.getElementById("pmsg");
+        if (!f) { clearPhoto(); return; }
+        if (f.size > MAX_BYTES) { m.textContent = "That photo is larger than 10 MB — please choose a smaller one."; m.className = "msg err"; clearPhoto(); return; }
+        PFILE = f;
+        pfname.textContent = f.name;
+        ppreview.src = URL.createObjectURL(f);
+        ppreview.style.display = "inline-block";
+        pclear.style.display = "inline";
+        m.textContent = ""; m.className = "msg";
+      });
+      if (pclear) pclear.addEventListener("click", clearPhoto);
+
       const postbtn = document.getElementById("postbtn");
       if (postbtn) postbtn.addEventListener("click", async () => {
         const ta = document.getElementById("pbody"), m = document.getElementById("pmsg");
         const body = ta.value.trim();
-        if (!body) { m.textContent = "Write something first."; m.className = "msg err"; return; }
-        postbtn.disabled = true; m.textContent = "Posting…"; m.className = "msg";
-        const { error } = await MillerDB.createPost(body);
+        if (!body && !PFILE) { m.textContent = "Write something or add a photo first."; m.className = "msg err"; return; }
+        postbtn.disabled = true; m.textContent = PFILE ? "Uploading…" : "Posting…"; m.className = "msg";
+        let imagePath = null;
+        if (PFILE) {
+          const up = await MillerDB.uploadSharedImage(PFILE, "post");
+          if (up.error) {
+            postbtn.disabled = false;
+            m.textContent = /photo_limit/.test(up.error.message || "") ? "You've reached your photo limit — delete a photo to add another." : ("Could not upload photo: " + up.error.message);
+            m.className = "msg err"; return;
+          }
+          imagePath = up.path;
+        }
+        const { error } = await MillerDB.createPost(body, imagePath);
         postbtn.disabled = false;
-        if (error) { m.textContent = "Could not post: " + error.message; m.className = "msg err"; return; }
+        if (error) {
+          if (imagePath) await MillerDB.releasePhoto(imagePath); // don't strand the upload
+          m.textContent = "Could not post: " + error.message; m.className = "msg err"; return;
+        }
         render();
       });
 
@@ -181,6 +243,14 @@
       wrap.querySelectorAll("[data-cinput]").forEach((inp) => inp.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); const btn = wrap.querySelector('[data-caddbtn="' + inp.dataset.cinput + '"]'); if (btn) btn.click(); }
       }));
+      wrap.querySelectorAll(".pimg img[data-full]").forEach((img) => img.addEventListener("click", () => openLightbox(img.dataset.full)));
+    }
+
+    function openLightbox(url) {
+      if (!url) return;
+      lbRoot.innerHTML = '<div class="lb" id="lb"><button class="x" id="lbx">✕</button><img src="' + esc(url) + '" /></div>';
+      document.getElementById("lbx").onclick = () => (lbRoot.innerHTML = "");
+      document.getElementById("lb").onclick = (e) => { if (e.target.id === "lb") lbRoot.innerHTML = ""; };
     }
 
     (async function init() {

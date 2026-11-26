@@ -211,7 +211,12 @@
           msg.textContent = "Uploading…"; changeBtn.disabled = true;
           const { error, path } = await MillerDB.uploadAvatar(file);
           changeBtn.disabled = false; fileIn.value = "";
-          if (error) { msg.textContent = "Upload failed: " + (error.message || error); return; }
+          if (error) {
+            msg.textContent = /photo_limit/.test(error.message || "")
+              ? "You've reached your photo limit — your profile photo counts too. Delete a photo first."
+              : "Upload failed: " + (error.message || error);
+            return;
+          }
           profile.avatar_url = path; msg.textContent = "Saved! 🎉"; paint();
         });
         removeBtn.addEventListener("click", async () => {

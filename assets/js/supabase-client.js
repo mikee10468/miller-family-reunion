@@ -209,7 +209,9 @@
       return client.from("app_settings").upsert({ key, value: String(value) }, { onConflict: "key" });
     },
     async listPhotos() {
-      return client.from("photos").select("*").order("created_at", { ascending: false });
+      // The gallery shows curated gallery uploads only; post/chat/avatar images
+      // still count toward the limit but live with their post/message/profile.
+      return client.from("photos").select("*").eq("context", "gallery").order("created_at", { ascending: false });
     },
     async myPhotoCount() {
       const session = await this.getSession();
@@ -241,6 +243,38 @@
       }
       return { error: null };
     },
+    // Upload an image that rides along on a post / chat message. It creates a
+    // photos row (so it counts against the shared per-member photo limit) and
+    // returns its storage path. On quota hit the orphaned file is rolled back.
+    async uploadSharedImage(file, context) {
+      const session = await this.getSession();
+      if (!session) return { error: { message: "Not signed in" } };
+      const uid = session.user.id;
+      const safe = (file.name || "image.jpg").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-40) || "image.jpg";
+      const path = uid + "/" + (context || "post") + "_" + Date.now() + "_" + safe;
+      const up = await client.storage.from(this.MEDIA_BUCKET).upload(path, file, { upsert: false, contentType: file.type || "image/jpeg" });
+      if (up.error) return { error: up.error };
+      const profile = await this.getProfile();
+      const ins = await client.from("photos").insert({
+        owner_id: uid,
+        owner_name: (profile && (profile.full_name || profile.email)) || "A family member",
+        storage_path: path,
+        kind: "photo",
+        context: context || "post",
+      });
+      if (ins.error) {
+        try { await client.storage.from(this.MEDIA_BUCKET).remove([path]); } catch (_) {}
+        return { error: ins.error };
+      }
+      return { error: null, path };
+    },
+    // Free a photo slot tied to a deleted post/message/avatar: drop its photos
+    // row and storage object. RLS limits this to the owner (or an admin).
+    async releasePhoto(path) {
+      if (!path) return;
+      try { await client.from("photos").delete().eq("storage_path", path); } catch (_) {}
+      try { await client.storage.from(this.MEDIA_BUCKET).remove([path]); } catch (_) {}
+    },
     async signedUrl(path, expires) {
       const { data } = await client.storage.from(this.MEDIA_BUCKET).createSignedUrl(path, expires || 3600);
       return data ? data.signedUrl : null;
@@ -266,9 +300,21 @@
       if (up.error) return { error: up.error };
       const prof = await this.getProfile();
       const old = prof && prof.avatar_url;
+      // Track the avatar as a photo so it counts against the shared limit.
+      const ins = await client.from("photos").insert({
+        owner_id: uid,
+        owner_name: (prof && (prof.full_name || prof.email)) || "A family member",
+        storage_path: path,
+        kind: "photo",
+        context: "avatar",
+      });
+      if (ins.error) {
+        try { await client.storage.from(this.MEDIA_BUCKET).remove([path]); } catch (_) {}
+        return { error: ins.error };
+      }
       const upd = await client.from("profiles").update({ avatar_url: path }).eq("id", uid);
-      if (upd.error) { try { await client.storage.from(this.MEDIA_BUCKET).remove([path]); } catch (_) {} return { error: upd.error }; }
-      if (old && old !== path) { try { await client.storage.from(this.MEDIA_BUCKET).remove([old]); } catch (_) {} }
+      if (upd.error) { await this.releasePhoto(path); return { error: upd.error }; }
+      if (old && old !== path) await this.releasePhoto(old); // free the previous avatar's slot
       return { error: null, path };
     },
     async removeAvatar() {
@@ -277,7 +323,7 @@
       const prof = await this.getProfile();
       const old = prof && prof.avatar_url;
       const upd = await client.from("profiles").update({ avatar_url: null }).eq("id", session.user.id);
-      if (!upd.error && old) { try { await client.storage.from(this.MEDIA_BUCKET).remove([old]); } catch (_) {} }
+      if (!upd.error && old) await this.releasePhoto(old);
       return upd;
     },
     async deletePhoto(photo) {
@@ -539,7 +585,7 @@
     async listPosts() {
       return client.from("posts").select("*").order("created_at", { ascending: false });
     },
-    async createPost(body) {
+    async createPost(body, imagePath) {
       const session = await this.getSession();
       const profile = await this.getProfile();
       if (!profile || !profile.person_id) return { error: { message: "You must be linked to the family tree to post." } };
@@ -547,11 +593,17 @@
         author_id: session.user.id,
         author_person_id: profile.person_id,
         author_name: profile.full_name || profile.email || "A family member",
-        body,
+        body: body || null,
+        image_path: imagePath || null,
       });
     },
     async deletePost(id) {
-      return client.from("posts").delete().eq("id", id);
+      // Look up any attached image first so we can free its quota slot.
+      let path = null;
+      try { const { data } = await client.from("posts").select("image_path").eq("id", id).maybeSingle(); path = data && data.image_path; } catch (_) {}
+      const del = await client.from("posts").delete().eq("id", id);
+      if (!del.error && path) await this.releasePhoto(path);
+      return del;
     },
     // All comments for a given target type (e.g. 'post'); group client-side.
     async listComments(targetType) {
@@ -594,18 +646,23 @@
       if (sinceIso) q = q.gt("created_at", sinceIso);
       return q;
     },
-    async sendMessage(conversationId, body) {
+    async sendMessage(conversationId, body, imagePath) {
       const session = await this.getSession();
       const profile = await this.getProfile();
       return client.from("messages").insert({
         conversation_id: conversationId,
         author_id: session.user.id,
         author_name: (profile && (profile.full_name || profile.email)) || "A family member",
-        body,
+        body: body || null,
+        image_path: imagePath || null,
       });
     },
     async deleteMessage(id) {
-      return client.from("messages").delete().eq("id", id);
+      let path = null;
+      try { const { data } = await client.from("messages").select("image_path").eq("id", id).maybeSingle(); path = data && data.image_path; } catch (_) {}
+      const del = await client.from("messages").delete().eq("id", id);
+      if (!del.error && path) await this.releasePhoto(path);
+      return del;
     },
     // Mark a conversation read up to now (clears its unread badge for me).
     async markConversationRead(conversationId) {

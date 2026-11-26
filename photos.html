@@ -84,7 +84,8 @@
         '<div class="upload">' +
           "<h2>Share a photo</h2>" +
           '<p class="quota">You\'ve used <b>' + COUNT + " of " + LIMIT + "</b> free photos." +
-            (atLimit ? " You\'ve reached your free limit — delete one to add another." : "") + "</p>" +
+            (atLimit ? " You\'ve reached your free limit — delete one to add another." : "") +
+            '<br><span style="font-size:.82rem;color:#8a7a99">This total includes photos you add in chat, on the board, and your profile picture.</span></p>' +
           '<div class="upload-row">' +
             '<span class="filebtn btn btn--gold' + (atLimit ? "" : "") + '">' + (atLimit ? "Limit reached" : "Choose a photo") +
               (atLimit ? "" : '<input type="file" id="file" accept="image/*" />') + "</span>" +
@@ -184,7 +185,7 @@
         return;
       }
       SETTINGS = await MillerDB.getSettings();
-      LIMIT = parseInt(SETTINGS.photo_limit, 10) || 3;
+      LIMIT = parseInt(SETTINGS.photo_limit, 10) || 6;
       COUNT = await MillerDB.myPhotoCount();
       render();
     })();
